@@ -1,1 +1,1 @@
-# ACWS_Project
+# AI-powered AWS Security Monitoring Expense Tracker
