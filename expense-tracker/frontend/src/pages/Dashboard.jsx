@@ -60,12 +60,25 @@ export default function Dashboard() {
         api.get('/categories'),
       ])
       setSummary(sumRes.data)
-      setMonthlyData(monthRes.data)
-      setCategoryData(catRes.data)
-      setRecentTransactions(txRes.data.items)
-      setCategories(allCatRes.data)
-      if (allCatRes.data.length > 0) {
-        setNewCategory(allCatRes.data[0].id)
+      setMonthlyData(
+        (monthRes.data || []).map((m) => ({
+          ...m,
+          income: parseFloat(m.income || 0),
+          expense: parseFloat(m.expense || 0),
+          net_savings: parseFloat(m.net_savings || 0),
+        }))
+      )
+      setCategoryData(
+        (catRes.data || []).map((c) => ({
+          ...c,
+          amount: parseFloat(c.amount || 0),
+        }))
+      )
+      setRecentTransactions(txRes.data.items || [])
+      setCategories(allCatRes.data || [])
+      if (allCatRes.data && allCatRes.data.length > 0) {
+        const defaultCat = allCatRes.data.find((c) => c.type === 'expense') || allCatRes.data[0]
+        setNewCategory(defaultCat.id)
       }
     } catch (err) {
       console.error('Error fetching dashboard data:', err)
@@ -270,8 +283,8 @@ export default function Dashboard() {
               Deep Analytics →
             </Link>
           </div>
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-72 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="month_name" tickLine={false} stroke="#94a3b8" fontSize={12} />
@@ -294,11 +307,13 @@ export default function Dashboard() {
             <h3 className="font-bold text-slate-900 text-base">Expense Breakdown</h3>
             <p className="text-xs text-slate-500">Distribution by category</p>
           </div>
-          <div className="h-72 w-full flex items-center justify-center">
+          <div className="h-72 w-full min-w-0">
             {categoryData.length === 0 ? (
-              <p className="text-xs text-slate-400">No expense records yet</p>
+              <div className="h-full flex items-center justify-center">
+                <p className="text-xs text-slate-400">No expense records yet</p>
+              </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <PieChart>
                   <Pie
                     data={categoryData}
@@ -403,7 +418,11 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setNewType('expense')}
+                  onClick={() => {
+                    setNewType('expense')
+                    const match = categories.find((c) => c.type === 'expense')
+                    if (match) setNewCategory(match.id)
+                  }}
                   className={`py-2 rounded-xl text-xs font-semibold border transition ${
                     newType === 'expense'
                       ? 'bg-rose-50 border-rose-200 text-rose-700'
@@ -414,7 +433,11 @@ export default function Dashboard() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setNewType('income')}
+                  onClick={() => {
+                    setNewType('income')
+                    const match = categories.find((c) => c.type === 'income')
+                    if (match) setNewCategory(match.id)
+                  }}
                   className={`py-2 rounded-xl text-xs font-semibold border transition ${
                     newType === 'income'
                       ? 'bg-emerald-50 border-emerald-200 text-emerald-700'

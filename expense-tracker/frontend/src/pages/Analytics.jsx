@@ -37,9 +37,27 @@ export default function Analytics() {
         api.get('/analytics/trends?days=30'),
         api.get('/analytics/summary'),
       ])
-      setMonthlyData(mRes.data)
-      setCategoryData(cRes.data)
-      setDailyData(dRes.data)
+      setMonthlyData(
+        (mRes.data || []).map((m) => ({
+          ...m,
+          income: parseFloat(m.income || 0),
+          expense: parseFloat(m.expense || 0),
+          net_savings: parseFloat(m.net_savings || 0),
+        }))
+      )
+      setCategoryData(
+        (cRes.data || []).map((c) => ({
+          ...c,
+          amount: parseFloat(c.amount || 0),
+        }))
+      )
+      setDailyData(
+        (dRes.data || []).map((d) => ({
+          ...d,
+          income: parseFloat(d.income || 0),
+          expense: parseFloat(d.expense || 0),
+        }))
+      )
       setSummary(sRes.data)
     } catch (err) {
       console.error(err)
@@ -80,8 +98,8 @@ export default function Analytics() {
       <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
         <h3 className="font-bold text-slate-900 text-base mb-1">Inflow vs Outflow Trends</h3>
         <p className="text-xs text-slate-500 mb-6">Compare monthly revenue and expenses side-by-side</p>
-        <div className="h-80 w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-80 w-full min-w-0">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="month_name" tickLine={false} stroke="#94a3b8" fontSize={12} />
@@ -104,8 +122,8 @@ export default function Analytics() {
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
           <h3 className="font-bold text-slate-900 text-base mb-1">30-Day Daily Activity</h3>
           <p className="text-xs text-slate-500 mb-6">Daily expense and income waves</p>
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-72 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={dailyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
@@ -114,7 +132,7 @@ export default function Analytics() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="date" tickLine={false} stroke="#94a3b8" fontSize={10} tickFormatter={(d) => d.slice(5)} />
+                <XAxis dataKey="date" tickLine={false} stroke="#94a3b8" fontSize={10} tickFormatter={(d) => d ? d.slice(5) : ''} />
                 <YAxis tickLine={false} stroke="#94a3b8" fontSize={10} />
                 <Tooltip
                   formatter={(val) => formatCurrency(val, currency)}
@@ -130,11 +148,13 @@ export default function Analytics() {
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
           <h3 className="font-bold text-slate-900 text-base mb-1">Category Spending Weights</h3>
           <p className="text-xs text-slate-500 mb-6">Relative percentage share of each category</p>
-          <div className="h-72 w-full flex items-center justify-center">
+          <div className="h-72 w-full min-w-0">
             {categoryData.length === 0 ? (
-              <p className="text-xs text-slate-400">No expense records available.</p>
+              <div className="h-full flex items-center justify-center">
+                <p className="text-xs text-slate-400">No expense records available.</p>
+              </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <PieChart>
                   <Pie
                     data={categoryData}
