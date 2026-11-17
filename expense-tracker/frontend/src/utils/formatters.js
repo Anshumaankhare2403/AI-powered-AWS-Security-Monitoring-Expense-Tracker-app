@@ -1,18 +1,19 @@
 export const CURRENCY_SYMBOLS = {
+  INR: '₹',
   USD: '$',
   EUR: '€',
   GBP: '£',
-  INR: '₹',
   JPY: '¥',
   CAD: 'CA$',
   AUD: 'AU$',
 }
 
-export function formatCurrency(amount, currency = 'USD') {
+export function formatCurrency(amount, currency = 'INR') {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount
   const validNum = isNaN(num) ? 0 : num
-  const symbol = CURRENCY_SYMBOLS[currency] || '$'
-  return `${symbol}${validNum.toLocaleString('en-US', {
+  const symbol = CURRENCY_SYMBOLS[currency] || '₹'
+  const locale = currency === 'INR' ? 'en-IN' : 'en-US'
+  return `${symbol}${validNum.toLocaleString(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Lock, Mail, User, ArrowRight, AlertCircle, DollarSign } from 'lucide-react'
+import { Lock, Mail, User, ArrowRight, AlertCircle, IndianRupee } from 'lucide-react'
 
 export default function Register() {
   const { register } = useAuth()
@@ -9,7 +9,7 @@ export default function Register() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [currency, setCurrency] = useState('USD')
+  const [currency, setCurrency] = useState('INR')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -95,16 +95,16 @@ export default function Register() {
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">Primary Currency</label>
             <div className="relative">
-              <DollarSign className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <IndianRupee className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-900/60 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 transition"
               >
+                <option value="INR">INR (₹) - Indian Rupee</option>
                 <option value="USD">USD ($)</option>
                 <option value="EUR">EUR (€)</option>
                 <option value="GBP">GBP (£)</option>
-                <option value="INR">INR (₹)</option>
                 <option value="JPY">JPY (¥)</option>
                 <option value="CAD">CAD (CA$)</option>
                 <option value="AUD">AUD (AU$)</option>

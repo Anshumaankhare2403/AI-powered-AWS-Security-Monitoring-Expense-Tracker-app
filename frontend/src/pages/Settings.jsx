@@ -21,7 +21,7 @@ export default function Settings() {
   // Profile Form State
   const [fullName, setFullName] = useState(user?.full_name || '')
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '')
-  const [currency, setCurrency] = useState(user?.currency || 'USD')
+  const [currency, setCurrency] = useState(user?.currency || 'INR')
   const [theme, setTheme] = useState(user?.theme || 'light')
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileSuccess, setProfileSuccess] = useState('')
@@ -103,10 +103,10 @@ export default function Settings() {
   }
 
   const currencies = [
+    { code: 'INR', name: 'Indian Rupee (₹)', symbol: '₹' },
     { code: 'USD', name: 'US Dollar ($)', symbol: '$' },
     { code: 'EUR', name: 'Euro (€)', symbol: '€' },
     { code: 'GBP', name: 'British Pound (£)', symbol: '£' },
-    { code: 'INR', name: 'Indian Rupee (₹)', symbol: '₹' },
     { code: 'JPY', name: 'Japanese Yen (¥)', symbol: '¥' },
     { code: 'CAD', name: 'Canadian Dollar (CA$)', symbol: 'CA$' },
     { code: 'AUD', name: 'Australian Dollar (A$)', symbol: 'A$' },

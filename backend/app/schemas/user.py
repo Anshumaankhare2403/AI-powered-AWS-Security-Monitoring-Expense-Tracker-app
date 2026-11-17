@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str = Field(..., min_length=2, max_length=150)
-    currency: Optional[str] = "USD"
+    currency: Optional[str] = "INR"
     theme: Optional[str] = "system"
 
 

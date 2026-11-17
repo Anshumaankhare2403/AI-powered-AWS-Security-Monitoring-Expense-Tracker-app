@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     hashed_password VARCHAR(255) NOT NULL,
     full_name VARCHAR(150) NOT NULL,
     avatar_url VARCHAR(500) NULL,
-    currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+    currency VARCHAR(10) NOT NULL DEFAULT 'INR',
     theme VARCHAR(20) NOT NULL DEFAULT 'system',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     is_verified BOOLEAN NOT NULL DEFAULT TRUE,

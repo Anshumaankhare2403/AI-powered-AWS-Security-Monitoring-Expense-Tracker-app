@@ -12,7 +12,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(150), nullable=False)
     avatar_url = Column(String(500), nullable=True)
-    currency = Column(String(10), nullable=False, default="USD")
+    currency = Column(String(10), nullable=False, default="INR")
     theme = Column(String(20), nullable=False, default="system")
     is_active = Column(Boolean, nullable=False, default=True)
     is_verified = Column(Boolean, nullable=False, default=True)

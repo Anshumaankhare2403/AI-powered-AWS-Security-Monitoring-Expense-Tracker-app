@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
     return userData
   }
 
-  const register = async (email, password, fullName, currency = 'USD') => {
+  const register = async (email, password, fullName, currency = 'INR') => {
     const res = await api.post('/auth/register', {
       email,
       password,
@@ -101,7 +101,7 @@ export function AuthProvider({ children }) {
     } catch (err) {}
   }
 
-  const currency = user?.currency || 'USD'
+  const currency = user?.currency || 'INR'
 
   return (
     <AuthContext.Provider
