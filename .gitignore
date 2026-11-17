@@ -37,10 +37,13 @@ wheels/
 .coverage
 htmlcov/
 
-# Local MySQL Data
+# Local Database & SQLite
 database/mysqldata/
 mysqldata/
 *.pid
+*.db
+*.sqlite
+*.sqlite3
 
 # Environment variables
 .env

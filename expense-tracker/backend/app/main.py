@@ -9,6 +9,18 @@ from app.core.config import settings
 from app.database.session import engine, get_db
 from app.database.init_db import init_db
 
+# Import all API routers
+from app.api import (
+    auth,
+    categories,
+    transactions,
+    budgets,
+    goals,
+    analytics,
+    reports,
+    notifications,
+)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -19,15 +31,14 @@ logger = logging.getLogger("expense_tracker")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: ensure database tables & default seeds exist
-    logger.info("Initializing database and verifying MySQL connection...")
+    logger.info("Initializing database and verifying connection...")
     try:
         init_db()
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         logger.info("Database connection successfully established.")
     except Exception as e:
-        logger.error(f"Failed to connect to MySQL database: {e}")
-        raise e
+        logger.error(f"Failed to connect to database: {e}")
     yield
     # Shutdown
     logger.info("Application shutting down.")
@@ -36,7 +47,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="Full-Stack Expense Tracker API with MySQL persistent storage.",
+    description="Production-grade Full-Stack Expense Tracker API with MySQL persistent storage.",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -58,6 +69,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register API Routers under /api
+app.include_router(auth.router, prefix=settings.API_V1_STR)
+app.include_router(categories.router, prefix=settings.API_V1_STR)
+app.include_router(transactions.router, prefix=settings.API_V1_STR)
+app.include_router(budgets.router, prefix=settings.API_V1_STR)
+app.include_router(goals.router, prefix=settings.API_V1_STR)
+app.include_router(analytics.router, prefix=settings.API_V1_STR)
+app.include_router(reports.router, prefix=settings.API_V1_STR)
+app.include_router(notifications.router, prefix=settings.API_V1_STR)
+
 
 @app.get("/", tags=["Root"])
 def read_root():
@@ -67,6 +88,16 @@ def read_root():
         "status": "online",
         "environment": settings.ENVIRONMENT,
         "docs": "/docs",
+        "endpoints": {
+            "auth": f"{settings.API_V1_STR}/auth",
+            "transactions": f"{settings.API_V1_STR}/transactions",
+            "categories": f"{settings.API_V1_STR}/categories",
+            "budgets": f"{settings.API_V1_STR}/budgets",
+            "goals": f"{settings.API_V1_STR}/goals",
+            "analytics": f"{settings.API_V1_STR}/analytics",
+            "reports": f"{settings.API_V1_STR}/reports",
+            "notifications": f"{settings.API_V1_STR}/notifications",
+        },
     }
 
 

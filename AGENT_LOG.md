@@ -142,3 +142,91 @@ This document tracks all design decisions, implementations, testing operations, 
    - **Fix**: Replaced `Fn::Base64: !Sub |` with `Fn::Base64: |`.
 2. **Error**: Missing AWS region configuration during local Lambda test suite execution (`NoRegionError`).
    - **Fix**: Added `os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")` into both `security_scanner.py` and `test_bedrock_lambda.py`.
+
+
+---
+
+## Milestones 2 & 3: Full Backend REST API & Authentication Architecture
+
+- **Task ID**: M2-M3-BACKEND-AUTH
+- **Date**: 2026-11-17
+- **Agent Role**: Senior Backend Engineer, Security Engineer & Database Architect
+- **Task Description**: Implement full REST API routers, Pydantic V2 validation schemas, JWT access and refresh token rotation, bcrypt password hashing, multi-tenant row isolation, financial aggregation engine, automated budget limit alerts, and CSV/PDF report streaming.
+
+### Files Created / Modified
+- `backend/app/core/security.py`: Password hashing with bcrypt, JWT token generation, payload decoding, and token rotation.
+- `backend/app/api/deps.py`: `get_current_user` dependency enforcing bearer authentication, user existence, and account status.
+- `backend/app/schemas/user.py`: User registration, login, profile update, token response schemas with Pydantic V2 `model_config = ConfigDict(from_attributes=True)`.
+- `backend/app/schemas/category.py`: Category creation, response, and filtering schemas.
+- `backend/app/schemas/transaction.py`: Transaction creation, update, query parameters, and paginated response schemas.
+- `backend/app/schemas/budget.py`: Budget definition, progress tracking, and alert threshold schemas.
+- `backend/app/schemas/goal.py`: Savings goal creation, contribution logging, and progress schemas.
+- `backend/app/schemas/analytics.py`: Financial summaries, monthly income vs expense aggregations, category breakdowns.
+- `backend/app/schemas/notification.py`: Real-time system and budget alert notifications.
+- `backend/app/api/auth.py`: Full authentication router (`/register`, `/login`, `/refresh`, `/forgot-password`, `/reset-password`, `/me`, `/profile`, `/change-password`).
+- `backend/app/api/categories.py`: Category router (`GET`, `POST`, `PUT`, `DELETE` with system-vs-custom ownership verification).
+- `backend/app/api/transactions.py`: Transaction router with full filtering, sorting, pagination, and automated budget threshold notification dispatch.
+- `backend/app/api/budgets.py`: Monthly budget management with spent calculation, remaining amount, and utilization percentages.
+- `backend/app/api/goals.py`: Savings goal tracking with target amount progress and contribution logging.
+- `backend/app/api/analytics.py`: KPI aggregation (`/summary`, `/monthly`, `/categories`, `/trends`).
+- `backend/app/api/reports.py`: Monthly and yearly financial breakdown endpoints, streaming CSV exporter, and ReportLab PDF document generator.
+- `backend/app/api/notifications.py`: Notification retrieval and read state management.
+- `backend/app/main.py`: Registered all 8 API routers with the `/api` prefix.
+- `backend/tests/test_full_suite.py`: Comprehensive test suite verifying all 8 endpoints and strict cross-user data isolation.
+
+### Tests Performed & Results
+- **Automated Pytest Suite** (`.\venv\Scripts\python.exe -m pytest -v`):
+  - `tests/test_database.py::test_database_connection`: **PASSED**
+  - `tests/test_database.py::test_database_tables_exist`: **PASSED**
+  - `tests/test_database.py::test_seeded_default_categories`: **PASSED**
+  - `tests/test_full_suite.py::test_auth_me`: **PASSED**
+  - `tests/test_full_suite.py::test_categories_api`: **PASSED**
+  - `tests/test_full_suite.py::test_transaction_crud_and_analytics`: **PASSED**
+  - `tests/test_full_suite.py::test_budgets_api`: **PASSED**
+  - `tests/test_full_suite.py::test_savings_goals`: **PASSED**
+  - `tests/test_full_suite.py::test_reports_and_export`: **PASSED**
+  - `tests/test_full_suite.py::test_cross_user_isolation`: **PASSED**
+  - `tests/test_health.py::test_root_endpoint`: **PASSED**
+  - `tests/test_health.py::test_health_check_endpoint`: **PASSED**
+  - **Result**: `12 passed in 2.31s`.
+
+---
+
+## Milestones 4-8: React Frontend Application & Full Integration
+
+- **Task ID**: M4-M8-FRONTEND-INTEGRATION
+- **Date**: 2026-11-17
+- **Agent Role**: Senior Full-Stack Developer, UI/UX Designer & Software Tester
+- **Task Description**: Build modern SaaS financial dashboard in React 19 + Tailwind CSS + Lucide Icons + Recharts, implementing all authentication pages, dashboard KPIs, transactions, categories, budgets, savings goals, analytics charts, reports (CSV & PDF download), and account settings. Connect all components to backend REST API.
+
+### Files Created / Modified
+- `frontend/src/services/api.js`: Axios client with bearer token injection, automated 401 token refresh interception, and session revocation.
+- `frontend/src/context/AuthContext.jsx`: Authentication state management with login, register, profile update, notification polling, and logout.
+- `frontend/src/utils/formatters.js`: High-precision currency and date formatting utilities.
+- `frontend/src/layouts/AppLayout.jsx`: Responsive layout with collapsible sidebar, active route styling, notification dropdown, and user profile card.
+- `frontend/src/pages/Login.jsx`: Login page with validation and error alerts.
+- `frontend/src/pages/Register.jsx`: Multi-currency registration with full validation.
+- `frontend/src/pages/ForgotPassword.jsx`: Forgot password flow with instant token display for development.
+- `frontend/src/pages/ResetPassword.jsx`: Secure password reset with token verification.
+- `frontend/src/pages/Dashboard.jsx`: Live financial dashboard with 4 KPI cards, Income vs Expenses bar chart, category distribution donut, budget tracking bar, recent transactions, and Quick Add modal.
+- `frontend/src/pages/Transactions.jsx`: Comprehensive transaction management with search, category filtering, type filtering, pagination, and Add/Edit/Delete modals.
+- `frontend/src/pages/Categories.jsx`: Tabbed category management with custom category creation and color palette picker.
+- `frontend/src/pages/Budgets.jsx`: Monthly budget manager with warning badges, threshold indicators, and budget creation modal.
+- `frontend/src/pages/Analytics.jsx`: Analytical deep-dive with monthly trend charts, 30-day daily cashflow area waves, category weights, and spending leaderboards.
+- `frontend/src/pages/Goals.jsx`: Savings goals milestone tracker with progress bars and contribution deposit modal.
+- `frontend/src/pages/Reports.jsx`: Financial reports with year/month selection, income/expense breakdown tables, and one-click direct CSV and PDF exports.
+- `frontend/src/pages/Settings.jsx`: Profile updater, currency switcher, light/dark theme selector, bcrypt password change, and notification preferences.
+- `frontend/src/App.jsx`: Full React Router DOM setup with Protected and Public route guards.
+- `start-all.bat` & `start-all.ps1`: One-click master launchers starting MySQL 8 (port 3307), FastAPI backend (port 8000), and React frontend (port 5173).
+- `run-backend.bat`: Dedicated standalone backend launcher.
+- `run-frontend.bat`: Dedicated standalone frontend launcher.
+- `run-mysql.bat`: Dedicated standalone MySQL 8 launcher.
+
+### Tests Performed & Results
+- **Frontend Production Build Verification** (`npm.cmd run build`):
+  - Modules transformed: 2,539
+  - Output files: `dist/index.html`, `dist/assets/index-JYhX7DCm.css` (42.63 kB), `dist/assets/index-BCPd0Ll1.js` (865.90 kB)
+  - **Result**: `✓ built in 609ms` with zero errors.
+- **Backend API Integration Verification**:
+  - Live API endpoints verified against MySQL 8 instance on port 3307.
+  - Automatic fallback to SQLite verified if MySQL is offline.
