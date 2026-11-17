@@ -92,3 +92,53 @@ This document tracks all design decisions, implementations, testing operations, 
 - **Milestone 8**: End-to-end integration and UX refinement.
 - **Milestone 9**: Rigorous QA testing, cross-user security verification, and edge-case testing.
 - **Milestone 10**: Docker containerization, CI/CD pipeline, and comprehensive API documentation.
+
+
+---
+
+## Task: AWS CloudFormation Architecture Implementation (AI-Powered Security Monitoring & Expense Tracker)
+
+- **Task ID**: AWS-CFN-AI-SECURITY
+- **Date**: 2026-11-17
+- **Agent Role**: DevOps Engineer, Cloud Architect & Security Engineer
+- **Task Description**: Convert the high-level architecture diagram into production-ready AWS CloudFormation infrastructure-as-code templates, automated deployment scripts, GitHub Actions CI/CD pipeline, and AI-powered threat remediation Lambda function integrated with Amazon Bedrock Guardrails.
+
+### Files Created / Modified
+- `infrastructure/cloudformation/all-in-one.yml`: Complete self-contained CloudFormation template defining VPC, Subnets, NAT, ALB, EC2 Launch Template, Auto Scaling Group, API Gateway with VPC Link, CloudFront CDN with S3 OAC, GuardDuty Detector, Bedrock Guardrails, Lambda Scanner, and DynamoDB.
+- `infrastructure/cloudformation/01-vpc.yml`: Modular networking template (VPC, Public/Private Subnets, NAT Gateway, Route Tables).
+- `infrastructure/cloudformation/02-storage-dynamo.yml`: Storage template (Frontend S3 Bucket, Scan Reports S3 Bucket, DynamoDB Findings Table).
+- `infrastructure/cloudformation/03-bedrock-guardrails.yml`: Amazon Bedrock Guardrails definition with Content Policies, PII Masking, and Denied Topics.
+- `infrastructure/cloudformation/04-compute-alb.yml`: Compute template (Internal ALB, Target Group, EC2 Launch Template, ASG, IAM Role).
+- `infrastructure/cloudformation/05-apigateway-cloudfront.yml`: API Gateway HTTP API, VPC Link, and CloudFront Distribution.
+- `infrastructure/cloudformation/06-guardduty-lambda-events.yml`: Threat detection and automated scan remediation via GuardDuty, EventBridge, and Lambda.
+- `infrastructure/cloudformation/main.yml`: Master nested stack orchestrating all modular sub-stacks.
+- `infrastructure/lambda/security_scanner.py`: Python 3.11 Lambda handler processing GuardDuty threat findings & scheduled FinOps audits with Amazon Bedrock foundation models and Bedrock Guardrail sanitization.
+- `infrastructure/scripts/deploy.ps1`: Automated PowerShell deployment script with caller verification and output display.
+- `infrastructure/scripts/deploy.sh`: Automated Bash deployment script for Linux/macOS/WSL.
+- `infrastructure/scripts/validate_cfn.py`: Python CloudFormation validation script leveraging `cfn-lint`.
+- `infrastructure/scripts/test_bedrock_lambda.py`: Automated unit test suite verifying Lambda event ingestion, mock Bedrock invocation, Guardrail checks, DynamoDB writes, and S3 report generation.
+- `.github/workflows/aws-cloudformation-deploy.yml`: GitHub Actions CI/CD pipeline (Source Code -> Build/Test -> CloudFormation Deploy -> S3 Sync).
+- `docs/AWS_ARCHITECTURE.md`: In-depth architecture specification detailing every layer, security boundary, and data flow.
+- `docs/CLOUDFORMATION_GUIDE.md`: Step-by-step deployment guide for both AWS Management Console and AWS CLI.
+
+### Tests Performed & Results
+1. **CloudFormation Linter & Semantic Analysis (`cfn-lint`)**:
+   - `01-vpc.yml`: **PASS** (0 errors, 0 warnings)
+   - `02-storage-dynamo.yml`: **PASS** (0 errors, 0 warnings)
+   - `03-bedrock-guardrails.yml`: **PASS** (0 errors, 0 warnings)
+   - `04-compute-alb.yml`: **PASS** (0 errors, 0 warnings)
+   - `05-apigateway-cloudfront.yml`: **PASS** (0 errors, 0 warnings)
+   - `06-guardduty-lambda-events.yml`: **PASS** (0 errors, 0 warnings)
+   - `all-in-one.yml`: **PASS** (0 errors, 0 warnings)
+   - `main.yml`: **PASS** (0 errors, 0 warnings)
+   - **Result**: `100% VALIDATED` (All 8 templates compliant with AWS CloudFormation resource specifications).
+2. **AI Security Scanner Lambda Unit Tests (`test_bedrock_lambda.py`)**:
+   - `test_guardduty_event_processing`: **PASSED** (Validated GuardDuty finding payload parsing, Bedrock Guardrail input filtering, Claude 3 invocation, DynamoDB item persistence, and S3 scan report writing).
+   - `test_scheduled_audit_event`: **PASSED** (Validated 6-hour scheduled FinOps scan event handling and resolution).
+   - **Result**: `2 passed in 0.007s`.
+
+### Errors Encountered & Fixes Applied
+1. **Warning**: `W1020` raised by `cfn-lint` for unnecessary `!Sub` in EC2 launch template UserData without template variables.
+   - **Fix**: Replaced `Fn::Base64: !Sub |` with `Fn::Base64: |`.
+2. **Error**: Missing AWS region configuration during local Lambda test suite execution (`NoRegionError`).
+   - **Fix**: Added `os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")` into both `security_scanner.py` and `test_bedrock_lambda.py`.

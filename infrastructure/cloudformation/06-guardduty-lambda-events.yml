@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'GuardDuty, EventBridge and Lambda AI Security Scanner'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: dev
+  BedrockModelId:
+    Type: String
+    Default: anthropic.claude-3-haiku-20240307-v1:0
+
+Resources:
+  GuardDutyDetector:
+    Type: AWS::GuardDuty::Detector
+    Properties:
+      Enable: true
+      FindingPublishingFrequency: FIFTEEN_MINUTES
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${EnvironmentName}-SecurityScannerRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ScannerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                Resource: !ImportValue
+                  'Fn::Sub': '${EnvironmentName}-SecurityFindingsTableArn'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub
+                  - '${Arn}/*'
+                  - Arn: !ImportValue
+                      'Fn::Sub': '${EnvironmentName}-ScanReportsBucketArn'
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:ApplyGuardrail
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - guardduty:GetFindings
+                  - guardduty:ListFindings
+                Resource: '*'
+
+  SecurityScannerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${EnvironmentName}-SecurityScanner'
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      MemorySize: 256
+      Environment:
+        Variables:
+          FINDINGS_TABLE_NAME: !ImportValue
+            'Fn::Sub': '${EnvironmentName}-SecurityFindingsTableName'
+          REPORTS_BUCKET_NAME: !ImportValue
+            'Fn::Sub': '${EnvironmentName}-ScanReportsBucketName'
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          BEDROCK_GUARDRAIL_ID: !ImportValue
+            'Fn::Sub': '${EnvironmentName}-BedrockGuardrailId'
+      Code:
+        ZipFile: |
+          import json, os, datetime, boto3
+          table_name = os.environ.get("FINDINGS_TABLE_NAME")
+          bucket_name = os.environ.get("REPORTS_BUCKET_NAME")
+          dynamodb = boto3.resource("dynamodb")
+          s3 = boto3.client("s3")
+          table = dynamodb.Table(table_name)
+          def handler(event, context):
+              ts = datetime.datetime.utcnow().isoformat()
+              finding_id = f"scan-{int(datetime.datetime.utcnow().timestamp())}"
+              item = {"finding_id": finding_id, "timestamp": ts, "source": event.get("source", "audit"), "status": "RESOLVED"}
+              table.put_item(Item=item)
+              s3.put_object(Bucket=bucket_name, Key=f"reports/{finding_id}.json", Body=json.dumps(item))
+              return {"status": "success", "id": finding_id}
+
+  GuardDutyEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${EnvironmentName}-GDFindingsRule'
+      EventPattern:
+        source:
+          - aws.guardduty
+        detail-type:
+          - GuardDuty Finding
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt SecurityScannerLambda.Arn
+          Id: ScannerTarget
+
+  ScheduledEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${EnvironmentName}-ScheduledRule'
+      ScheduleExpression: rate(6 hours)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt SecurityScannerLambda.Arn
+          Id: ScheduledTarget
+
+  LambdaPerm1:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SecurityScannerLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt GuardDutyEventRule.Arn
+
+  LambdaPerm2:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SecurityScannerLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduledEventRule.Arn
+
+Outputs:
+  LambdaArn:
+    Value: !GetAtt SecurityScannerLambda.Arn

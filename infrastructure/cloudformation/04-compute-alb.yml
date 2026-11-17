@@ -1,0 +1,170 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Internal Application Load Balancer and Auto Scaling EC2 Backend'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: dev
+  InstanceType:
+    Type: String
+    Default: t3.micro
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
+
+Resources:
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Inbound HTTP to Internal ALB
+      VpcId: !ImportValue
+        'Fn::Sub': '${EnvironmentName}-VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow port 8000 from ALB
+      VpcId: !ImportValue
+        'Fn::Sub': '${EnvironmentName}-VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  InternalALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${EnvironmentName}-int-alb'
+      Scheme: internal
+      Subnets:
+        - !ImportValue
+          'Fn::Sub': '${EnvironmentName}-PrivateSubnet1'
+        - !ImportValue
+          'Fn::Sub': '${EnvironmentName}-PrivateSubnet2'
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${EnvironmentName}-fastapi-tg'
+      Port: 8000
+      Protocol: HTTP
+      VpcId: !ImportValue
+        'Fn::Sub': '${EnvironmentName}-VpcId'
+      TargetType: instance
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 30
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref InternalALB
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2InstanceRole
+
+  BackendLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub '${EnvironmentName}-fastapi-lt'
+      LaunchTemplateData:
+        ImageId: !Ref LatestAmiId
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        SecurityGroupIds:
+          - !Ref EC2SecurityGroup
+        UserData:
+          Fn::Base64: |
+            #!/bin/bash
+            dnf update -y
+            dnf install -y python3.11 python3.11-pip git
+            mkdir -p /opt/expense-tracker
+            cd /opt/expense-tracker
+            cat << 'EOF' > app.py
+            from fastapi import FastAPI
+            import socket
+            app = FastAPI()
+            @app.get("/")
+            def root():
+                return {"message": "Expense Tracker API live", "host": socket.gethostname()}
+            @app.get("/health")
+            def health():
+                return {"status": "healthy"}
+            EOF
+            python3.11 -m pip install fastapi uvicorn
+            cat << 'EOF' > /etc/systemd/system/fastapi.service
+            [Unit]
+            Description=FastAPI Service
+            After=network.target
+            [Service]
+            ExecStart=/usr/local/bin/uvicorn app:app --host 0.0.0.0 --port 8000
+            Restart=always
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+            systemctl daemon-reload
+            systemctl enable fastapi
+            systemctl start fastapi
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Sub '${EnvironmentName}-fastapi-asg'
+      VPCZoneIdentifier:
+        - !ImportValue
+          'Fn::Sub': '${EnvironmentName}-PrivateSubnet1'
+        - !ImportValue
+          'Fn::Sub': '${EnvironmentName}-PrivateSubnet2'
+      LaunchTemplate:
+        LaunchTemplateId: !Ref BackendLaunchTemplate
+        Version: !GetAtt BackendLaunchTemplate.LatestVersionNumber
+      MinSize: '1'
+      MaxSize: '3'
+      DesiredCapacity: '1'
+      TargetGroupARNs:
+        - !Ref ALBTargetGroup
+
+Outputs:
+  ALBListenerArn:
+    Value: !Ref ALBListener
+    Export:
+      Name: !Sub '${EnvironmentName}-ALBListenerArn'
+  ALBDNSName:
+    Value: !GetAtt InternalALB.DNSName
+    Export:
+      Name: !Sub '${EnvironmentName}-ALBDNSName'

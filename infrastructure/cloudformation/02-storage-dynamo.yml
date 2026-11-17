@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Storage and Database Resources (S3 & DynamoDB)'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: dev
+
+Resources:
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'expense-tracker-frontend-${EnvironmentName}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  ScanReportsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'expense-tracker-scan-reports-${EnvironmentName}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  SecurityFindingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${EnvironmentName}-SecurityFindingsTable'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: finding_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: finding_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: StatusIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+Outputs:
+  FrontendBucketName:
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub '${EnvironmentName}-FrontendBucketName'
+  FrontendBucketArn:
+    Value: !GetAtt FrontendBucket.Arn
+    Export:
+      Name: !Sub '${EnvironmentName}-FrontendBucketArn'
+  ScanReportsBucketName:
+    Value: !Ref ScanReportsBucket
+    Export:
+      Name: !Sub '${EnvironmentName}-ScanReportsBucketName'
+  ScanReportsBucketArn:
+    Value: !GetAtt ScanReportsBucket.Arn
+    Export:
+      Name: !Sub '${EnvironmentName}-ScanReportsBucketArn'
+  SecurityFindingsTableArn:
+    Value: !GetAtt SecurityFindingsTable.Arn
+    Export:
+      Name: !Sub '${EnvironmentName}-SecurityFindingsTableArn'
+  SecurityFindingsTableName:
+    Value: !Ref SecurityFindingsTable
+    Export:
+      Name: !Sub '${EnvironmentName}-SecurityFindingsTableName'

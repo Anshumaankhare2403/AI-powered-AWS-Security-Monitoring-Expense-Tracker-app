@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Master Stack: AI-Powered AWS Security Monitoring & Expense Tracker'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+  TemplateBaseUrl:
+    Type: String
+    Description: Base S3 URL where sub-templates are uploaded (e.g. https://my-bucket.s3.amazonaws.com/cloudformation)
+
+Resources:
+  VpcStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseUrl}/01-vpc.yml'
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+
+  StorageStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseUrl}/02-storage-dynamo.yml'
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+
+  BedrockStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseUrl}/03-bedrock-guardrails.yml'
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+
+  ComputeStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: VpcStack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseUrl}/04-compute-alb.yml'
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+
+  ApiGatewayCloudFrontStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - VpcStack
+      - ComputeStack
+      - StorageStack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseUrl}/05-apigateway-cloudfront.yml'
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+
+  MonitoringStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - StorageStack
+      - BedrockStack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseUrl}/06-guardduty-lambda-events.yml'
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+
+Outputs:
+  CloudFrontUrl:
+    Description: Global Web Application URL
+    Value: !GetAtt ApiGatewayCloudFrontStack.Outputs.CloudFrontUrl
+
+  ApiEndpoint:
+    Description: Backend API Endpoint
+    Value: !GetAtt ApiGatewayCloudFrontStack.Outputs.ApiEndpoint
