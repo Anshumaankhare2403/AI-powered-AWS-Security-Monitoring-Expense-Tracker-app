@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Automated deployment script for AI-Powered AWS Security Monitoring & Expense Tracker.
 
