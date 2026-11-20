@@ -1,0 +1,10 @@
+﻿Repository: AI-powered-AWS-Security-Monitoring-Expense-Tracker-app
+Source folder: E:\My projects\AI-powered-AWS-Security-Monitoring-Expense-Tracker-app
+Date: 2026-11-20 21:27:04
+
+Environment and credential files (restore to this exact repository-relative path):
+
+- .env.example
+- expense-tracker/.env.example
+
+Each path is relative to this repository root.
