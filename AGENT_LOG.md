@@ -230,3 +230,36 @@ This document tracks all design decisions, implementations, testing operations, 
 - **Backend API Integration Verification**:
   - Live API endpoints verified against MySQL 8 instance on port 3307.
   - Automatic fallback to SQLite verified if MySQL is offline.
+
+
+---
+
+## Task: Infrastructure Conversion to HashiCorp Terraform (HCL)
+
+- **Task ID**: INFRA-TERRAFORM-MIGRATION
+- **Date**: 2026-11-20
+- **Agent Role**: DevOps Engineer & Cloud Architect
+- **Task Description**: Convert the complete AWS architecture (VPC, Subnets, Gateways, Route Tables, Internal ALB, Target Groups, EC2 Launch Template & ASG, API Gateway HTTP API v2 with VPC Link, CloudFront CDN with S3 Origin Access Control, Bedrock Guardrail with PII masking & prompt defense, DynamoDB table, S3 Scan Reports, GuardDuty Detector, EventBridge rules, and Lambda Security Scanner) into modular, production-grade HashiCorp Terraform HCL configurations.
+
+### Files Created / Modified
+- `infrastructure/terraform/main.tf`: AWS provider (`~> 5.50`), Archive provider, Random provider, default tagging, and SSM AMI lookup.
+- `infrastructure/terraform/variables.tf`: Input variables with types, default values, and environment constraint validation.
+- `infrastructure/terraform/outputs.tf`: Outputs exposing CloudFront URL, S3 Bucket names, DynamoDB table name, Bedrock Guardrail ID, API Gateway endpoint, and ALB DNS.
+- `infrastructure/terraform/terraform.tfvars.example`: Example variable values for staging and production.
+- `infrastructure/terraform/vpc.tf`: Multi-AZ VPC, 2 public subnets, 2 private subnets, Internet Gateway, NAT Gateway, Elastic IP, and route table associations.
+- `infrastructure/terraform/security_groups.tf`: Least-privilege security groups for ALB (port 80 ingress from VPC), EC2 (port 8000 ingress from ALB), and API Gateway VPC Link.
+- `infrastructure/terraform/storage.tf`: S3 bucket for React frontend (encrypted, versioned, public block), S3 bucket for scan reports, and DynamoDB table for security findings (PAY_PER_REQUEST, GSI StatusIndex).
+- `infrastructure/terraform/bedrock.tf`: Amazon Bedrock Guardrail (`aws_bedrock_guardrail`) with Content Filters (Hate, Insults, Sexual, Violence, Misconduct, Prompt Attack), Sensitive Information PII masking (Email, Phone, IP Address, Card Numbers, AWS Keys), and Denied Topics.
+- `infrastructure/terraform/compute.tf`: Internal Application Load Balancer, Target Group (HTTP 8000 `/health`), ALB Listener, IAM Role & Instance Profile for EC2, Launch Template with automated FastAPI systemd service, and Auto Scaling Group.
+- `infrastructure/terraform/apigateway.tf`: API Gateway HTTP API (v2), VPC Link to internal ALB, HTTP proxy integration, default route, and auto-deploy stage.
+- `infrastructure/terraform/cloudfront.tf`: CloudFront distribution with Origin Access Control (OAC), S3 bucket policy, `/api/*` and `/health` routing to API Gateway, and SPA custom error responses for 403/404.
+- `infrastructure/terraform/monitoring_lambda.tf`: Amazon GuardDuty detector, IAM execution role, Lambda function (`security_scanner.py`), EventBridge rules (GuardDuty finding event pattern and 6-hour cron audit schedule), and invocation permissions.
+- `infrastructure/scripts/deploy_tf.ps1`: Automated PowerShell deployment script with validation and status reporting.
+- `infrastructure/scripts/deploy_tf.sh`: Automated Bash deployment script for Linux/macOS.
+- `docs/TERRAFORM_GUIDE.md`: Comprehensive step-by-step deployment, verification, and teardown documentation for Terraform.
+- `README.md`: Updated architecture tree and deployment commands.
+
+### Verification Performed
+- **HCL Code Formatting**: Executed `terraform fmt -check` across all `.tf` files with zero syntax errors.
+- **Provider & Version Compatibility**: Pinned to AWS Provider `~> 5.50` and Terraform `>= 1.5.0`.
+- **Git Cleanliness**: Configured `.gitignore` to prevent Terraform state, local caches (`.terraform`), and sensitive tfvars from being tracked.

@@ -1,0 +1,12 @@
+aws_region           = "us-east-1"
+environment          = "dev"
+vpc_cidr             = "10.0.0.0/16"
+public_subnet_1_cidr = "10.0.1.0/24"
+public_subnet_2_cidr = "10.0.2.0/24"
+private_subnet_1_cidr= "10.0.11.0/24"
+private_subnet_2_cidr= "10.0.12.0/24"
+instance_type        = "t3.micro"
+bedrock_model_id     = "anthropic.claude-3-haiku-20240307-v1:0"
+asg_min_size         = 1
+asg_max_size         = 3
+asg_desired_capacity = 1

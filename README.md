@@ -53,7 +53,7 @@ expense-tracker/
 │   ├── requirements.txt
 │   └── Dockerfile
 │
-├── infrastructure/               # AWS CloudFormation Infrastructure as Code
+├── infrastructure/               # AWS Infrastructure as Code (CloudFormation & Terraform)
 │   ├── cloudformation/           # Modular & All-in-One CloudFormation Templates
 │   │   ├── all-in-one.yml        # Complete architecture stack
 │   │   ├── 01-vpc.yml            # Multi-AZ VPC & Subnets
@@ -63,8 +63,20 @@ expense-tracker/
 │   │   ├── 05-apigateway-cloudfront.yml # API Gateway & CloudFront CDN
 │   │   ├── 06-guardduty-lambda-events.yml # GuardDuty, EventBridge & Lambda
 │   │   └── main.yml              # Nested Master Stack
+│   ├── terraform/                # Complete Modular Terraform HCL Stack
+│   │   ├── main.tf               # Provider configuration & data lookups
+│   │   ├── variables.tf          # Parameter declarations & validation rules
+│   │   ├── outputs.tf            # Stack outputs (URLs, bucket names, ARNs)
+│   │   ├── vpc.tf                # VPC, subnets, NAT Gateway & routing
+│   │   ├── security_groups.tf    # ALB, EC2, and VPC Link security groups
+│   │   ├── storage.tf            # S3 buckets & DynamoDB table
+│   │   ├── bedrock.tf            # Bedrock Guardrail & policy definitions
+│   │   ├── compute.tf            # Internal ALB, ASG, Launch Template & IAM
+│   │   ├── apigateway.tf         # HTTP API, VPC Link & integration
+│   │   ├── cloudfront.tf         # CloudFront CDN, OAC & S3 bucket policy
+│   │   └── monitoring_lambda.tf  # GuardDuty, EventBridge & Lambda scanner
 │   ├── lambda/                   # AI Security Scanner Lambda (Claude 3 + Bedrock Guardrails)
-│   └── scripts/                  # Deploy & validation scripts (deploy.ps1, deploy.sh)
+│   └── scripts/                  # Deploy & validation scripts (deploy.ps1, deploy_tf.ps1, deploy_tf.sh)
 │
 ├── database/
 │   ├── schema.sql                # Complete MySQL 8.0 DDL Script
@@ -76,6 +88,7 @@ expense-tracker/
 │   ├── TESTING_REPORT.md         # Comprehensive QA & test verification report
 │   ├── AWS_ARCHITECTURE.md       # In-depth AWS Architecture Specification
 │   ├── CLOUDFORMATION_GUIDE.md   # Step-by-step CloudFormation deployment guide
+│   ├── TERRAFORM_GUIDE.md        # Step-by-step Terraform deployment guide
 │   └── Expense_Tracker_API.postman_collection.json # Postman Test Collection
 │
 ├── .github/workflows/
@@ -167,9 +180,31 @@ python infrastructure/scripts/test_bedrock_lambda.py
 
 ---
 
-## ☁️ Deploying to AWS CloudFormation
+## ☁️ Deploying to AWS (CloudFormation or Terraform)
 
-To deploy the AWS AI Security & Expense Tracker infrastructure to your AWS account:
+### Option 1: Deploy with Terraform (Recommended for HCL workflows)
+
+Deploy the entire infrastructure using Terraform:
+
+```powershell
+# Using the automated PowerShell deployment script
+.\infrastructure\scripts\deploy_tf.ps1 -Action apply -Environment dev -Region us-east-1
+```
+
+Or deploy directly via Terraform CLI:
+```bash
+cd infrastructure/terraform
+terraform init
+terraform apply -auto-approve -var="environment=dev" -var="aws_region=us-east-1"
+```
+
+Refer to [docs/TERRAFORM_GUIDE.md](docs/TERRAFORM_GUIDE.md) for detailed inputs, state management, and teardown steps.
+
+---
+
+### Option 2: Deploy with AWS CloudFormation
+
+To deploy using CloudFormation:
 
 ```powershell
 # Using the PowerShell automated deploy script
