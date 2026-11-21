@@ -25,6 +25,7 @@ export default function Security() {
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState(false)
   const [activeTab, setActiveTab] = useState('all')
+  const [showDiagram, setShowDiagram] = useState(false)
   const [message, setMessage] = useState(null)
 
   const fetchData = async () => {
@@ -243,11 +244,29 @@ export default function Security() {
             <h2 className="text-base font-bold text-slate-900">AWS Cloud Tier Infrastructure Status</h2>
             <p className="text-xs text-slate-500 mt-0.5">Live operational status of provisioned AWS resources across 2 Availability Zones</p>
           </div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            High Availability
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowDiagram(!showDiagram)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition"
+            >
+              {showDiagram ? 'Hide Architecture Diagram' : 'View Architecture Diagram'}
+            </button>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              High Availability
+            </span>
+          </div>
         </div>
+
+        {showDiagram && (
+          <div className="mt-4 p-3 bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-inner">
+            <img
+              src="/architecture-diagram.jpg"
+              alt="AWS Architecture Diagram"
+              className="w-full rounded-xl object-contain max-h-[500px]"
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
           <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/70 flex items-start gap-3">

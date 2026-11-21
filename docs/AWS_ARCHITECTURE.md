@@ -2,6 +2,8 @@
 
 ## AI-Powered AWS Security Monitoring & Expense Tracker Web Application
 
+![AWS Cloud Architecture Diagram](architecture-diagram.jpg)
+
 This document details the enterprise cloud architecture represented in the architecture diagram and implemented via Terraform and CloudFormation infrastructure-as-code templates in this repository.
 
 ---

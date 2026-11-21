@@ -4,6 +4,12 @@ A modern, production-quality, enterprise-grade Expense Tracker application built
 
 ---
 
+## 🏛️ Cloud Architecture Diagram
+
+![AWS Cloud Architecture Diagram](docs/architecture-diagram.jpg)
+
+---
+
 ## 🌟 Key Features
 
 ### 📊 Financial Management

@@ -21,6 +21,8 @@
 
 This platform implements an enterprise **3-Tier Cloud Architecture** augmented by a **Serverless AI Security & FinOps Automation Loop**.
 
+![AWS Cloud Architecture Diagram](architecture-diagram.jpg)
+
 ```
 [ Client Browser ]
         │
