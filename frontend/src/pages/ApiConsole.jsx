@@ -347,7 +347,7 @@ export default function ApiConsole() {
                       rows={4}
                       value={requestBody}
                       onChange={(e) => setRequestBody(e.target.value)}
-                      placeholder="{\n  \"key\": \"value\"\n}"
+                      placeholder='{ "key": "value" }'
                       className="w-full p-2.5 text-xs font-mono bg-slate-900 text-slate-200 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
