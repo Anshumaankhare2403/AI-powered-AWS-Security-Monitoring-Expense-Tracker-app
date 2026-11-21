@@ -17,6 +17,7 @@ import {
   PlusCircle,
   CheckCheck,
   ShieldCheck,
+  Terminal,
 } from 'lucide-react'
 
 export default function AppLayout() {
@@ -35,6 +36,7 @@ export default function AppLayout() {
     { label: 'Savings Goals', path: '/goals', icon: Target },
     { label: 'Reports', path: '/reports', icon: FileSpreadsheet },
     { label: 'Cloud Security & AI', path: '/security', icon: ShieldCheck },
+    { label: 'Live API Console', path: '/api-console', icon: Terminal },
     { label: 'Settings', path: '/settings', icon: Settings },
   ]
 

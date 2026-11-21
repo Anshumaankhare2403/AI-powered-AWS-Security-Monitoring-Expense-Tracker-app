@@ -27,6 +27,7 @@ A modern, production-quality, enterprise-grade Expense Tracker application built
 - **Threat Detection**: Automated Amazon GuardDuty finding ingestion through Amazon EventBridge.
 - **AI Remediation Scanner**: AWS Lambda invoking Foundation Models (Claude 3 Haiku / Titan) to assess cloud security risks and recommend FinOps remediations.
 - **Live Cloud Security & FinOps Dashboard**: Built-in React view displaying real-time AWS infrastructure telemetry, active GuardDuty findings, Bedrock AI remediation advice, and archived S3 audit reports.
+- **⚡ Live API Operations & Output Console (`/api-console`)**: Real-time interactive API explorer, JSON response inspector with latency and status codes, Bedrock Guardrail PII masking lab, and GuardDuty threat simulator.
 - **Isolated Relational Data Tier**: Amazon RDS MySQL 8.0 on AWS Graviton (`db.t4g.micro`) in isolated private subnets with AWS Secrets Manager credentials.
 - **Perimeter Defense**: AWS WAFv2 with IP rate limiting and OWASP Top 10 Common Rules protecting CloudFront edge distributions.
 - **Cost-Optimized FinOps Architecture**: Free VPC Gateway Endpoints for S3 & DynamoDB bypassing NAT Gateway data transfer surcharges.
@@ -41,7 +42,7 @@ A modern, production-quality, enterprise-grade Expense Tracker application built
 AI-powered-AWS-Security-Monitoring-Expense-Tracker-app/
 ├── frontend/                     # React 19 + Vite + Tailwind CSS + Lucide + Recharts
 │   ├── src/
-│   │   ├── pages/                # Dashboard, Transactions, Categories, Budgets, Analytics, Goals, Reports, Security & FinOps, Settings, Auth
+│   │   ├── pages/                # Dashboard, Transactions, Categories, Budgets, Analytics, Goals, Reports, Security & FinOps, Live API Console, Settings, Auth
 │   │   ├── layouts/              # Responsive AppLayout with Sidebar & Navigation
 │   │   ├── context/              # AuthContext (JWT session & notification polling)
 │   │   ├── services/             # Axios API client with automatic token refresh

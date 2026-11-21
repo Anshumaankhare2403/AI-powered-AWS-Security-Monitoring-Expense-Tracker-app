@@ -17,6 +17,7 @@ import Goals from './pages/Goals'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import Security from './pages/Security'
+import ApiConsole from './pages/ApiConsole'
 
 // Protected Route Guard
 function ProtectedRoute({ children }) {
@@ -116,6 +117,7 @@ export default function App() {
             <Route path="goals" element={<Goals />} />
             <Route path="reports" element={<Reports />} />
             <Route path="security" element={<Security />} />
+            <Route path="api-console" element={<ApiConsole />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 
