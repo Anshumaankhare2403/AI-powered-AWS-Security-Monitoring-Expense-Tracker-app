@@ -41,7 +41,7 @@ resource "aws_subnet" "public_2" {
   }
 }
 
-# Private Subnets (AZ 0 and AZ 1)
+# Private Subnets for Compute & ALB (AZ 0 and AZ 1)
 resource "aws_subnet" "private_1" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.private_subnet_1_cidr
@@ -61,6 +61,40 @@ resource "aws_subnet" "private_2" {
 
   tags = {
     Name = "${var.environment}-private-subnet-2"
+  }
+}
+
+# Isolated Database Subnets (AZ 0 and AZ 1 - Zero Direct Internet Route)
+resource "aws_subnet" "db_1" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.database_subnet_1_cidr
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name = "${var.environment}-database-subnet-1"
+  }
+}
+
+resource "aws_subnet" "db_2" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.database_subnet_2_cidr
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name = "${var.environment}-database-subnet-2"
+  }
+}
+
+# DB Subnet Group for Amazon RDS MySQL
+resource "aws_db_subnet_group" "rds_subnet_group" {
+  name        = "${var.environment}-rds-db-subnet-group"
+  description = "Subnet group for Multi-AZ isolated RDS MySQL database instances"
+  subnet_ids  = [aws_subnet.db_1.id, aws_subnet.db_2.id]
+
+  tags = {
+    Name = "${var.environment}-rds-subnet-group"
   }
 }
 
@@ -109,7 +143,7 @@ resource "aws_route_table_association" "public_2" {
   route_table_id = aws_route_table.public.id
 }
 
-# Private Route Table & Routes (Route outbound internet to NAT Gateway)
+# Private Route Table & Routes (Routes outbound internet via NAT Gateway)
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
@@ -131,4 +165,50 @@ resource "aws_route_table_association" "private_1" {
 resource "aws_route_table_association" "private_2" {
   subnet_id      = aws_subnet.private_2.id
   route_table_id = aws_route_table.private.id
+}
+
+# Database Route Table (Isolated - Local Traffic Only)
+resource "aws_route_table" "database" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "${var.environment}-database-rt"
+  }
+}
+
+resource "aws_route_table_association" "db_1" {
+  subnet_id      = aws_subnet.db_1.id
+  route_table_id = aws_route_table.database.id
+}
+
+resource "aws_route_table_association" "db_2" {
+  subnet_id      = aws_subnet.db_2.id
+  route_table_id = aws_route_table.database.id
+}
+
+# ==============================================================================
+# FINOPS COST-OPTIMIZATION: VPC GATEWAY ENDPOINTS (FREE)
+# S3 and DynamoDB traffic bypasses the NAT Gateway completely, eliminating
+# $0.045/GB NAT Gateway data processing charges and decreasing latency.
+# ==============================================================================
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private.id, aws_route_table.public.id]
+
+  tags = {
+    Name = "${var.environment}-s3-gateway-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "dynamodb" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.dynamodb"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private.id]
+
+  tags = {
+    Name = "${var.environment}-dynamodb-gateway-endpoint"
+  }
 }

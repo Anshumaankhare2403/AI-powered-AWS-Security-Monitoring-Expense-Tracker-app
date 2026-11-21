@@ -263,3 +263,37 @@ This document tracks all design decisions, implementations, testing operations, 
 - **HCL Code Formatting**: Executed `terraform fmt -check` across all `.tf` files with zero syntax errors.
 - **Provider & Version Compatibility**: Pinned to AWS Provider `~> 5.50` and Terraform `>= 1.5.0`.
 - **Git Cleanliness**: Configured `.gitignore` to prevent Terraform state, local caches (`.terraform`), and sensitive tfvars from being tracked.
+
+
+---
+
+## Milestone 11: Cloud Architecture Optimization, Relational Cloud DB & Exam Readiness
+
+- **Task ID**: M11-CLOUD-INFRA-OPTIMIZATION-AND-GAPS
+- **Date**: 2026-11-21
+- **Agent Role**: Principal Cloud Architect, FinOps Specialist & Cybersecurity Engineer
+- **Task Description**: Conduct comprehensive infrastructure audit, eliminate architectural disconnections between application and cloud IaC, add missing Amazon RDS MySQL tier in isolated subnets, implement AWS Secrets Manager, integrate AWS WAF perimeter defense, activate free VPC Gateway Endpoints for FinOps cost reduction, bridge AI security findings to backend & React frontend, remove redundant files, and create an in-depth Academic Cloud Exam & Viva Defense Guide with 25+ questions.
+
+### Files Created / Modified
+- `infrastructure/terraform/database.tf`: Added Amazon RDS MySQL 8.0 on AWS Graviton `db.t4g.micro` with storage encryption, isolated DB subnet group, and custom utf8mb4 parameter group.
+- `infrastructure/terraform/secrets.tf`: Added AWS Secrets Manager secret storing production database credentials and JWT keys dynamically.
+- `infrastructure/terraform/waf.tf`: Added AWS WAFv2 Web ACL on CloudFront with IP Rate Limiting (500 req/5 min) and OWASP Top 10 Common Rules.
+- `infrastructure/terraform/vpc.tf`: Added isolated database subnets (`db_1`, `db_2`), DB subnet group, and free **VPC Gateway Endpoints** for Amazon S3 and Amazon DynamoDB to bypass NAT Gateway data fees.
+- `infrastructure/terraform/security_groups.tf`: Added `db_sg` security group chaining port 3306 strictly to `ec2_sg`.
+- `infrastructure/terraform/compute.tf`: Updated EC2 IAM profile to read Secrets Manager secrets; modernized UserData bootstrap script to load credentials and configure production FastAPI service.
+- `infrastructure/terraform/storage.tf`: Added FinOps S3 Lifecycle configuration (30-day Standard-IA, 90-day expire).
+- `infrastructure/terraform/monitoring_lambda.tf`: Applied IAM Principle of Least Privilege to Bedrock Guardrail and DynamoDB ARNs.
+- `infrastructure/terraform/outputs.tf`: Exposed RDS endpoint, Secrets Manager ARN, WAF ARN, and VPC Gateway Endpoints.
+- `backend/app/api/security.py`: Added full cloud security telemetry API (`/findings`, `/summary`, `/reports`, `/scan`) querying DynamoDB and S3 with resilient fallback.
+- `backend/app/main.py`: Registered `/api/security` router in FastAPI application.
+- `backend/tests/test_security_api.py`: Added automated Pytest test suite for security endpoints.
+- `frontend/src/pages/Security.jsx`: Built enterprise Cloud Security & AI FinOps Dashboard with 6-tier infrastructure health matrix, Bedrock risk analysis, and prescribed remediations.
+- `frontend/src/layouts/AppLayout.jsx` & `frontend/src/App.jsx`: Added `/security` navigation link and protected route.
+- `docs/CLOUD_INFRASTRUCTURE_EXAM_GUIDE.md`: Comprehensive academic exam guide featuring 6-pillar Well-Architected analysis, exact FinOps cost formulas, and 25+ high-yield viva questions with model answers.
+- `docs/AWS_ARCHITECTURE.md` & `README.md`: Updated architecture diagrams, request flows, and documentation.
+- `infrastructure/scripts/validate_cfn.py`: Fixed hardcoded paths to use dynamic relative pathing.
+- Removed redundant legacy `expense-tracker/` folder.
+
+### Verification Performed
+- **AI Security Scanner Lambda Unit Tests**: `python infrastructure/scripts/test_bedrock_lambda.py` passed with 100% success (`Ran 2 tests in 0.009s, OK`).
+- **Workspace Cleanliness**: Removed duplicate nested project files; confirmed clean root architecture.

@@ -16,6 +16,7 @@ import Analytics from './pages/Analytics'
 import Goals from './pages/Goals'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
+import Security from './pages/Security'
 
 // Protected Route Guard
 function ProtectedRoute({ children }) {
@@ -114,6 +115,7 @@ export default function App() {
             <Route path="analytics" element={<Analytics />} />
             <Route path="goals" element={<Goals />} />
             <Route path="reports" element={<Reports />} />
+            <Route path="security" element={<Security />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 

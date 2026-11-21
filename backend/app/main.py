@@ -19,6 +19,7 @@ from app.api import (
     analytics,
     reports,
     notifications,
+    security,
 )
 
 logging.basicConfig(
@@ -78,6 +79,7 @@ app.include_router(goals.router, prefix=settings.API_V1_STR)
 app.include_router(analytics.router, prefix=settings.API_V1_STR)
 app.include_router(reports.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
+app.include_router(security.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/", tags=["Root"])
@@ -97,6 +99,7 @@ def read_root():
             "analytics": f"{settings.API_V1_STR}/analytics",
             "reports": f"{settings.API_V1_STR}/reports",
             "notifications": f"{settings.API_V1_STR}/notifications",
+            "security": f"{settings.API_V1_STR}/security",
         },
     }
 

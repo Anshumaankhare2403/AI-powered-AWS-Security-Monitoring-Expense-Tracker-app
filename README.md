@@ -16,22 +16,26 @@ A modern, production-quality, enterprise-grade Expense Tracker application built
 - **Financial Reports**: Monthly and yearly aggregation tables with direct one-click streaming exports to **CSV** and **PDF** (via ReportLab).
 - **User Settings**: Profile updating, primary currency switcher (USD, EUR, GBP, INR, JPY, CAD, AUD), light/dark themes, and bcrypt password changes.
 
-### 🛡️ AI-Powered AWS Cloud Architecture
-- **Amazon Bedrock Guardrails**: Input and output sanitization protecting against prompt injections, PII leakage, and toxic content.
+### 🛡️ AI-Powered AWS Cloud Architecture & FinOps
+- **Amazon Bedrock Guardrails**: Input and output sanitization protecting against prompt injections, PII leakage (credit cards, AWS keys, emails), and toxic content.
 - **Threat Detection**: Automated Amazon GuardDuty finding ingestion through Amazon EventBridge.
-- **AI Remediation Scanner**: AWS Lambda invoking Foundation Models (Claude 3 Sonnet / Titan) to assess cloud security risks and recommend FinOps remediations.
-- **Audit Persistence**: Security findings stored in Amazon DynamoDB; audit logs exported to Amazon S3.
+- **AI Remediation Scanner**: AWS Lambda invoking Foundation Models (Claude 3 Haiku / Titan) to assess cloud security risks and recommend FinOps remediations.
+- **Live Cloud Security & FinOps Dashboard**: Built-in React view displaying real-time AWS infrastructure telemetry, active GuardDuty findings, Bedrock AI remediation advice, and archived S3 audit reports.
+- **Isolated Relational Data Tier**: Amazon RDS MySQL 8.0 on AWS Graviton (`db.t4g.micro`) in isolated private subnets with AWS Secrets Manager credentials.
+- **Perimeter Defense**: AWS WAFv2 with IP rate limiting and OWASP Top 10 Common Rules protecting CloudFront edge distributions.
+- **Cost-Optimized FinOps Architecture**: Free VPC Gateway Endpoints for S3 & DynamoDB bypassing NAT Gateway data transfer surcharges.
 - **Multi-Tenant Isolation**: Multi-tenant row-level access control preventing cross-user data exposure.
+- **🎓 Comprehensive Exam & Viva Guide**: In-depth architecture defense and 25+ viva questions in [docs/CLOUD_INFRASTRUCTURE_EXAM_GUIDE.md](docs/CLOUD_INFRASTRUCTURE_EXAM_GUIDE.md).
 
 ---
 
 ## 🗂️ Project Directory Structure
 
 ```
-expense-tracker/
+AI-powered-AWS-Security-Monitoring-Expense-Tracker-app/
 ├── frontend/                     # React 19 + Vite + Tailwind CSS + Lucide + Recharts
 │   ├── src/
-│   │   ├── pages/                # Dashboard, Transactions, Categories, Budgets, Analytics, Goals, Reports, Settings, Auth
+│   │   ├── pages/                # Dashboard, Transactions, Categories, Budgets, Analytics, Goals, Reports, Security & FinOps, Settings, Auth
 │   │   ├── layouts/              # Responsive AppLayout with Sidebar & Navigation
 │   │   ├── context/              # AuthContext (JWT session & notification polling)
 │   │   ├── services/             # Axios API client with automatic token refresh
@@ -43,13 +47,13 @@ expense-tracker/
 │
 ├── backend/                      # Python 3.11 FastAPI Backend
 │   ├── app/
-│   │   ├── api/                  # REST API Endpoints (Auth, Categories, Transactions, Budgets, Goals, Analytics, Reports, Notifications)
+│   │   ├── api/                  # REST API Endpoints (Auth, Categories, Transactions, Budgets, Goals, Analytics, Reports, Notifications, Security)
 │   │   ├── core/                 # Config, Security, JWT Bearer Token Rotation, Bcrypt
 │   │   ├── models/               # SQLAlchemy 2.0 ORM Models (8 Relational Tables)
 │   │   ├── schemas/              # Pydantic V2 Request & Response Validation Schemas
 │   │   ├── database/             # Engine, SessionLocal, Seeder, and SQLite Fallback
 │   │   └── main.py               # Application entrypoint & CORS
-│   ├── tests/                    # Automated Pytest suite (12 full-coverage tests)
+│   ├── tests/                    # Automated Pytest suite (full-coverage tests)
 │   ├── requirements.txt
 │   └── Dockerfile
 │
@@ -67,9 +71,12 @@ expense-tracker/
 │   │   ├── main.tf               # Provider configuration & data lookups
 │   │   ├── variables.tf          # Parameter declarations & validation rules
 │   │   ├── outputs.tf            # Stack outputs (URLs, bucket names, ARNs)
-│   │   ├── vpc.tf                # VPC, subnets, NAT Gateway & routing
-│   │   ├── security_groups.tf    # ALB, EC2, and VPC Link security groups
-│   │   ├── storage.tf            # S3 buckets & DynamoDB table
+│   │   ├── vpc.tf                # VPC, subnets, NAT Gateway & VPC Gateway Endpoints
+│   │   ├── security_groups.tf    # ALB, EC2, VPC Link, and RDS security groups
+│   │   ├── database.tf           # Amazon RDS MySQL 8.0 (AWS Graviton db.t4g.micro)
+│   │   ├── secrets.tf            # AWS Secrets Manager credentials & JWT keys
+│   │   ├── waf.tf                # AWS WAFv2 Web ACL (OWASP Top 10 & Rate Limiting)
+│   │   ├── storage.tf            # S3 buckets (Lifecycle enabled) & DynamoDB table
 │   │   ├── bedrock.tf            # Bedrock Guardrail & policy definitions
 │   │   ├── compute.tf            # Internal ALB, ASG, Launch Template & IAM
 │   │   ├── apigateway.tf         # HTTP API, VPC Link & integration
@@ -83,10 +90,11 @@ expense-tracker/
 │   └── mysqldata/                # Dedicated local MySQL 8.0 data directory
 │
 ├── docs/
+│   ├── CLOUD_INFRASTRUCTURE_EXAM_GUIDE.md # 🎓 Comprehensive Cloud Exam & Viva Guide (25+ Q&As)
+│   ├── AWS_ARCHITECTURE.md       # In-depth AWS Architecture Specification
 │   ├── API_DOCUMENTATION.md      # Full REST API Reference & Request/Response examples
 │   ├── DATABASE_DESIGN.md        # Relational ER diagrams & schema documentation
 │   ├── TESTING_REPORT.md         # Comprehensive QA & test verification report
-│   ├── AWS_ARCHITECTURE.md       # In-depth AWS Architecture Specification
 │   ├── CLOUDFORMATION_GUIDE.md   # Step-by-step CloudFormation deployment guide
 │   ├── TERRAFORM_GUIDE.md        # Step-by-step Terraform deployment guide
 │   └── Expense_Tracker_API.postman_collection.json # Postman Test Collection

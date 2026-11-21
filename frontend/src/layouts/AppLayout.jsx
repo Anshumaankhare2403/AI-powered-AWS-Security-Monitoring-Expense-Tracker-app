@@ -34,6 +34,7 @@ export default function AppLayout() {
     { label: 'Analytics', path: '/analytics', icon: LineChart },
     { label: 'Savings Goals', path: '/goals', icon: Target },
     { label: 'Reports', path: '/reports', icon: FileSpreadsheet },
+    { label: 'Cloud Security & AI', path: '/security', icon: ShieldCheck },
     { label: 'Settings', path: '/settings', icon: Settings },
   ]
 

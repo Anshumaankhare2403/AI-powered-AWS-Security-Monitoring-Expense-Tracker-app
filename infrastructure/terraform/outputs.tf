@@ -42,3 +42,33 @@ output "vpc_id" {
   description = "VPC ID"
   value       = aws_vpc.main.id
 }
+
+output "rds_endpoint" {
+  description = "Amazon RDS MySQL Database Endpoint (Isolated Data Tier)"
+  value       = aws_db_instance.mysql.endpoint
+}
+
+output "rds_database_name" {
+  description = "Relational database name"
+  value       = aws_db_instance.mysql.db_name
+}
+
+output "secrets_manager_secret_arn" {
+  description = "AWS Secrets Manager ARN storing production database credentials and JWT keys"
+  value       = aws_secretsmanager_secret.app_secrets.arn
+}
+
+output "waf_web_acl_arn" {
+  description = "AWS WAFv2 Web ACL ARN protecting the CloudFront distribution"
+  value       = var.enable_waf ? aws_wafv2_web_acl.cloudfront_waf.arn : "disabled"
+}
+
+output "s3_gateway_endpoint_id" {
+  description = "VPC Gateway Endpoint for Amazon S3 (Cost-optimized, bypasses NAT Gateway)"
+  value       = aws_vpc_endpoint.s3.id
+}
+
+output "dynamodb_gateway_endpoint_id" {
+  description = "VPC Gateway Endpoint for Amazon DynamoDB (Cost-optimized, bypasses NAT Gateway)"
+  value       = aws_vpc_endpoint.dynamodb.id
+}

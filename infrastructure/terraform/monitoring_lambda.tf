@@ -61,10 +61,19 @@ resource "aws_iam_role_policy" "lambda_policy" {
       {
         Effect = "Allow"
         Action = [
-          "bedrock:InvokeModel",
+          "bedrock:InvokeModel"
+        ]
+        Resource = "arn:aws:bedrock:${var.aws_region}::foundation-model/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "bedrock:ApplyGuardrail"
         ]
-        Resource = "*"
+        Resource = [
+          aws_bedrock_guardrail.security_guardrail.guardrail_arn,
+          "${aws_bedrock_guardrail.security_guardrail.guardrail_arn}/*"
+        ]
       },
       {
         Effect = "Allow"
@@ -72,7 +81,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "guardduty:GetFindings",
           "guardduty:ListFindings"
         ]
-        Resource = "*"
+        Resource = aws_guardduty_detector.primary.arn
       }
     ]
   })

@@ -70,3 +70,30 @@ resource "aws_security_group" "vpclink_sg" {
     Name = "${var.environment}-vpclink-sg"
   }
 }
+
+# Security Group for Amazon RDS MySQL Database (Isolated Data Tier)
+resource "aws_security_group" "db_sg" {
+  name        = "${var.environment}-rds-mysql-sg"
+  description = "Allows MySQL ingress strictly from Backend EC2 instances on port 3306"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "MySQL port 3306 from Backend EC2 SG only"
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ec2_sg.id]
+  }
+
+  egress {
+    description = "Allow outbound response within VPC"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  tags = {
+    Name = "${var.environment}-rds-mysql-sg"
+  }
+}

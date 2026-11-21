@@ -13,6 +13,7 @@ resource "aws_cloudfront_distribution" "frontend_distribution" {
   is_ipv6_enabled     = true
   default_root_object = "index.html"
   comment             = "${var.environment} Expense Tracker Frontend & API Distribution"
+  web_acl_id          = var.enable_waf ? aws_wafv2_web_acl.cloudfront_waf.arn : null
 
   # Origin 1: React Frontend in S3
   origin {

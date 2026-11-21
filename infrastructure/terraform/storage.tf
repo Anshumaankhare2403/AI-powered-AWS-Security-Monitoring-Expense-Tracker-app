@@ -72,6 +72,27 @@ resource "aws_s3_bucket_public_access_block" "scan_reports" {
   restrict_public_buckets = true
 }
 
+# FinOps Cost-Optimization: S3 Lifecycle Rule for Scan Reports
+resource "aws_s3_bucket_lifecycle_configuration" "scan_reports_lifecycle" {
+  bucket = aws_s3_bucket.scan_reports.id
+
+  rule {
+    id     = "retire-old-scan-reports"
+    status = "Enabled"
+
+    filter {}
+
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+
+    expiration {
+      days = 90
+    }
+  }
+}
+
 # DynamoDB Table for Security Findings, Threat Events & AI Remediation Status
 resource "aws_dynamodb_table" "security_findings" {
   name         = "${var.environment}-SecurityFindingsTable"

@@ -4,7 +4,7 @@ import cfnlint.core
 import cfnlint.config
 import cfnlint.runner
 
-cfn_dir = r"d:\AI-powered-AWS-Security-Monitoring-Expense-Tracker-app\infrastructure\cloudformation"
+cfn_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "cloudformation"))
 templates = glob.glob(os.path.join(cfn_dir, "*.yml"))
 
 all_passed = True
