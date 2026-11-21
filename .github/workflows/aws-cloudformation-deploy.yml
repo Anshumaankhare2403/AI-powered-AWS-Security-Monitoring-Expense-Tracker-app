@@ -70,7 +70,7 @@ jobs:
   deploy-infrastructure:
     name: Deploy AWS CloudFormation Stack
     needs: test-and-lint
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.AWS_ACCESS_KEY_ID != ''
     runs-on: ubuntu-latest
     env:
       AWS_REGION: us-east-1
