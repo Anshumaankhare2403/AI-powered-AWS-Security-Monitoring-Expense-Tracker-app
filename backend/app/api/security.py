@@ -275,6 +275,154 @@ def get_ai_suggestions(current_user: User = Depends(get_current_user)):
     return suggestions
 
 
+def evaluate_security_guardrails(raw_text: str):
+    """
+    Evaluates text against Bedrock PII, SQLi, Prompt Injection, 
+    Cross-Tenant/Administrative Data Exfiltration, Command Injection,
+    Path Traversal, and Malicious Intent safety policies.
+    """
+    text = raw_text
+    interventions = []
+
+    # Semantic normalization for adversarial typo evasion & leetspeak
+    norm = text.lower()
+    typo_map = [
+        (r"\badmi\b", "admin"),
+        (r"\bdetils\b", "details"),
+        (r"\bdetials\b", "details"),
+        (r"\bothere\b", "other"),
+        (r"\bpayemnt\b", "payment"),
+        (r"\bpaymnt\b", "payment"),
+        (r"\bpasswrd\b", "password"),
+        (r"\bcreds\b", "credentials"),
+        (r"\bsecrts\b", "secrets"),
+        (r"4dm1n", "admin"),
+        (r"p@ssw0rd", "password"),
+        (r"p4ssw0rd", "password"),
+        (r"h@ck", "hack"),
+    ]
+    for pattern, rep in typo_map:
+        norm = re.sub(pattern, rep, norm)
+
+    # 1. Cross-Tenant Data Exfiltration & Privilege Escalation Checks
+    has_exfiltration_verb = bool(re.search(r"\b(give\s+me|show\s+me|dump|extract|list|get|fetch|print|export|leak|download|reveal|display|steal|find|access|read)\b", norm))
+    has_admin_target = bool(re.search(r"\b(admin|administrator|root|superuser|sysadmin|master)\b", norm))
+    has_user_target = bool(re.search(r"\b(all\s+users?|other\s+users?|all\s+other\s+users?|every\s+user|other\s+accounts?|database\s+users?)\b", norm))
+    has_payment_target = bool(re.search(r"\b(payment|credit\s*cards?|debit\s*cards?|cards?|bank|billing|salary|financial|cvv)\b", norm))
+    has_credential_target = bool(re.search(r"\b(passwords?|credentials?|secrets?|tokens?|keys?|details?|info|data|records?|transactions?)\b", norm))
+
+    # Trigger 1: Admin details exfiltration attempt
+    if has_admin_target and (has_exfiltration_verb or "all" in norm) and has_credential_target:
+        interventions.append({
+            "type": "PRIVILEGE_ESCALATION_BLOCKED",
+            "detail": "Unauthorized extraction intent targeting administrative credentials and elevated roles."
+        })
+
+    # Trigger 2: Cross-user / other users payment or financial data harvesting
+    if (has_user_target and has_payment_target) or (has_payment_target and has_exfiltration_verb and (has_user_target or "all" in norm)):
+        interventions.append({
+            "type": "CROSS_TENANT_EXFILTRATION_BLOCKED",
+            "detail": "Attempted cross-tenant data harvesting targeting multi-user payment details and financial transactions."
+        })
+        interventions.append({
+            "type": "SENSITIVE_PII_PROTECTION",
+            "detail": "PCI-DSS / ISO 27001 Protection: Payment and banking records cannot be accessed across account boundaries."
+        })
+
+    # Trigger 3: Bulk database dump or mass credentials export
+    if re.search(r"\b(dump\s+database|all\s+passwords|dump\s+users|all\s+secrets|export\s+all\s+data|dump\s+tables?)\b", norm):
+        interventions.append({
+            "type": "BULK_DATA_EXFILTRATION_BLOCKED",
+            "detail": "Bulk database dump or credential harvesting instruction intercepted."
+        })
+
+    # 2. PII Regex Checks
+    cc_pattern = r'\b(?:\d{4}[ -]?){3}\d{4}\b'
+    if re.search(cc_pattern, text):
+        text = re.sub(cc_pattern, "****-****-****-1234", text)
+        interventions.append({"type": "PII_MASKING", "detail": "CREDIT_DEBIT_CARD_NUMBER masked to ****-****-****-1234"})
+
+    email_pattern = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
+    if re.search(email_pattern, text):
+        text = re.sub(email_pattern, "anonymized@masked.internal", text)
+        interventions.append({"type": "PII_MASKING", "detail": "EMAIL address anonymized"})
+
+    key_pattern = r'(?i)(AKIA[0-9A-Z]{16}|aws_secret_access_key)'
+    if re.search(key_pattern, text):
+        text = re.sub(key_pattern, "[AWS_ACCESS_KEY_BLOCKED]", text)
+        interventions.append({"type": "DENIED_TOPIC", "detail": "AWS Access Key pattern blocked"})
+
+    # 3. SQL Injection Detection Checks
+    sqli_patterns = [
+        (r"(?i)(\bunion\b\s+select\b)", "UNION SELECT database extraction pattern"),
+        (r"(?i)(\bor\b\s+['\"]?1['\"]?\s*=\s*['\"]?1['\"])", "OR 1=1 Boolean-based authentication bypass"),
+        (r"(?i)(\b(drop|alter|truncate)\s+table\b)", "DDL table destruction statement"),
+        (r"(?i)(--\s*$|/\*.*?\*/|;\s*--)", "SQL comment truncation signature"),
+        (r"(?i)(\bexec\s*xp_\w+)", "SQL Server stored procedure execution"),
+        (r"(?i)(\bselect\b.*?\bfrom\b.*?\b(users|accounts|passwords|auth)\b)", "Database schema interrogation query"),
+    ]
+    for pattern, desc in sqli_patterns:
+        if re.search(pattern, text):
+            text = re.sub(pattern, "[BLOCKED_SQL_INJECTION_PAYLOAD]", text)
+            interventions.append({
+                "type": "SQL_INJECTION_BLOCK",
+                "detail": f"AWS WAF SQLi Signature intercepted: {desc}"
+            })
+
+    # 4. Command Injection / Remote Code Execution (RCE)
+    rce_patterns = [
+        (r"(?i)(\b(cat\s+/etc/(passwd|shadow)|bash\s+-i|nc\s+-[el]|curl.*?\|\s*(bash|sh)|powershell.*?-(enc|e)\b))", "Linux/Windows command execution payload"),
+        (r"(?i)(\b(whoami|id|uname\s+-a|net\s+localgroup|ipconfig|ifconfig|iptables)\b)", "System reconnaissance command execution"),
+        (r"(?i)(\brm\s+-rf\b|\bdel\s+/f\b|\bformat\s+[a-z]:)", "System file destruction command"),
+    ]
+    for pattern, desc in rce_patterns:
+        if re.search(pattern, text):
+            interventions.append({
+                "type": "COMMAND_INJECTION_BLOCKED",
+                "detail": f"Operating system shell command injection intercepted: {desc}"
+            })
+
+    # 5. Path Traversal & Sensitive File Inspection
+    if re.search(r"(\.\./\.\.|\\\.\.\\|\.env\b|/etc/|c:\\windows\\system32|id_rsa|id_ed25519)", text, re.IGNORECASE):
+        interventions.append({
+            "type": "PATH_TRAVERSAL_BLOCKED",
+            "detail": "Unauthorized directory traversal and internal secrets file access intercepted."
+        })
+
+    # 6. Malicious Exploitation / Attack Inquiries
+    malicious_intent_patterns = [
+        (r"(?i)\bhow\s+to\s+(hack|ddos|exploit|bypass\s+(waf|firewall|auth)|crack\s+passwords?|steal\s+credentials?|poison\s+database)\b", "Malicious cyberattack instructional query"),
+        (r"(?i)\b(generate|create|write)\s+(malware|ransomware|keylogger|trojan|exploit\s+code|phishing\s+template)\b", "Weaponized payload creation attempt"),
+    ]
+    for pattern, desc in malicious_intent_patterns:
+        if re.search(pattern, text):
+            interventions.append({
+                "type": "MALICIOUS_INTENT_BLOCKED",
+                "detail": f"Safety Violation: {desc}"
+            })
+
+    # 7. Prompt Attack / Jailbreak Injection Checks
+    prompt_attack_keywords = [
+        "ignore previous instructions", "system prompt", "print all secrets",
+        "bypass security", "disregard safety", "dan mode", "developer mode",
+        "jailbreak", "reveal system prompt", "unrestricted mode", "you are now unrestricted",
+        "act as an unfiltered", "forget all safety rules", "pretend you have no rules"
+    ]
+    for kw in prompt_attack_keywords:
+        if kw in norm:
+            interventions.append({"type": "PROMPT_ATTACK", "detail": f"Prompt injection detected on keyword: '{kw}'"})
+
+    action = "GUARDRAIL_INTERVENED" if len(interventions) > 0 else "PASSED"
+
+    if action == "GUARDRAIL_INTERVENED":
+        unique_types = sorted(list(set(i['type'] for i in interventions)))
+        sanitized_output = f"[BLOCKED BY BEDROCK GUARDRAIL: Detected {', '.join(unique_types)}. Request violates cloud security, data privacy, and multi-tenant policies.]"
+    else:
+        sanitized_output = text
+
+    return action, interventions, sanitized_output
+
+
 @router.post("/test-guardrail")
 def test_bedrock_guardrail(payload: GuardrailTestRequest, current_user: User = Depends(get_current_user)):
     """
@@ -285,6 +433,9 @@ def test_bedrock_guardrail(payload: GuardrailTestRequest, current_user: User = D
     guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID", "0ddzpzhr3pnp")
     guardrail_version = os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT")
     region = os.environ.get("AWS_REGION", "us-east-1")
+
+    # Evaluate domain security policies
+    domain_action, domain_interventions, domain_sanitized = evaluate_security_guardrails(payload.prompt)
 
     # 1. Attempt live invocation of real AWS Bedrock apply_guardrail
     try:
@@ -299,7 +450,7 @@ def test_bedrock_guardrail(payload: GuardrailTestRequest, current_user: User = D
         action = bedrock_resp.get("action", "NONE")
         assessments = bedrock_resp.get("assessments", [])
 
-        interventions = []
+        interventions = list(domain_interventions)
         for a in assessments:
             if "sensitiveInformationPolicy" in a:
                 for pii in a["sensitiveInformationPolicy"].get("piiEntities", []):
@@ -335,11 +486,14 @@ def test_bedrock_guardrail(payload: GuardrailTestRequest, current_user: User = D
         if "outputs" in bedrock_resp and len(bedrock_resp["outputs"]) > 0:
             output_text = bedrock_resp["outputs"][0].get("text", payload.prompt)
 
+        final_action = "GUARDRAIL_INTERVENED" if (action != "NONE" or domain_action == "GUARDRAIL_INTERVENED") else "PASSED_TO_BEDROCK"
+        final_output = domain_sanitized if domain_action == "GUARDRAIL_INTERVENED" else output_text
+
         return {
-            "action": "GUARDRAIL_INTERVENED" if action != "NONE" else "PASSED_TO_BEDROCK",
+            "action": final_action,
             "execution_mode": "LIVE_AWS_BEDROCK",
             "original_prompt": payload.prompt,
-            "sanitized_output": output_text,
+            "sanitized_output": final_output,
             "interventions": interventions if interventions else [{"type": "NONE", "detail": "All checks passed"}],
             "bedrock_guardrail_id": guardrail_id,
             "bedrock_guardrail_arn": f"arn:aws:bedrock:{region}:075858439116:guardrail/{guardrail_id}",
@@ -351,61 +505,12 @@ def test_bedrock_guardrail(payload: GuardrailTestRequest, current_user: User = D
         logger.warning(f"Live Bedrock apply_guardrail unavailable ({e}). Falling back to local heuristic engine.")
 
     # 2. Local Fallback Heuristics
-    text = payload.prompt
-    interventions = []
-
-    # PII Regex Checks
-    cc_pattern = r'\b(?:\d{4}[ -]?){3}\d{4}\b'
-    if re.search(cc_pattern, text):
-        text = re.sub(cc_pattern, "****-****-****-1234", text)
-        interventions.append({"type": "PII_MASKING", "detail": "CREDIT_DEBIT_CARD_NUMBER masked to ****-****-****-1234"})
-
-    email_pattern = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
-    if re.search(email_pattern, text):
-        text = re.sub(email_pattern, "anonymized@masked.internal", text)
-        interventions.append({"type": "PII_MASKING", "detail": "EMAIL address anonymized"})
-
-    key_pattern = r'(?i)(AKIA[0-9A-Z]{16}|aws_secret_access_key)'
-    if re.search(key_pattern, text):
-        text = re.sub(key_pattern, "[AWS_ACCESS_KEY_BLOCKED]", text)
-        interventions.append({"type": "DENIED_TOPIC", "detail": "AWS Access Key pattern blocked"})
-
-    # SQL Injection Detection Checks
-    sqli_patterns = [
-        (r"(?i)(\bunion\b\s+select\b)", "UNION SELECT database extraction pattern"),
-        (r"(?i)(\bor\b\s+['\"]?1['\"]?\s*=\s*['\"]?1['\"])", "OR 1=1 Boolean-based authentication bypass"),
-        (r"(?i)(\b(drop|alter|truncate)\s+table\b)", "DDL table destruction statement"),
-        (r"(?i)(--\s*$|/\*.*?\*/|;\s*--)", "SQL comment truncation signature"),
-        (r"(?i)(\bexec\s*xp_\w+)", "SQL Server stored procedure execution"),
-    ]
-    for pattern, desc in sqli_patterns:
-        if re.search(pattern, text):
-            text = re.sub(pattern, "[BLOCKED_SQL_INJECTION_PAYLOAD]", text)
-            interventions.append({
-                "type": "SQL_INJECTION_BLOCK",
-                "detail": f"AWS WAF SQLi Signature intercepted: {desc}"
-            })
-
-    # Prompt Attack / Injection Checks
-    prompt_attack_keywords = [
-        "ignore previous instructions",
-        "system prompt",
-        "print all secrets",
-        "bypass security",
-        "disregard safety",
-    ]
-    for kw in prompt_attack_keywords:
-        if kw in text.lower():
-            interventions.append({"type": "PROMPT_ATTACK", "detail": f"Prompt injection detected on keyword: '{kw}'"})
-
-    action = "GUARDRAIL_INTERVENED" if len(interventions) > 0 else "PASSED"
-
     return {
-        "action": action,
+        "action": domain_action,
         "execution_mode": "LOCAL_FALLBACK_SIMULATION",
         "original_prompt": payload.prompt,
-        "sanitized_output": text,
-        "interventions": interventions,
+        "sanitized_output": domain_sanitized,
+        "interventions": domain_interventions if domain_interventions else [{"type": "NONE", "detail": "All checks passed"}],
         "bedrock_guardrail_id": guardrail_id,
         "foundation_model_status": "Protected by Bedrock Content & PII Policies",
         "response_timestamp": datetime.datetime.utcnow().isoformat(),
