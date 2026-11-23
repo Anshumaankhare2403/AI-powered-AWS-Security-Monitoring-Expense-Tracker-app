@@ -370,13 +370,28 @@ def test_bedrock_guardrail(payload: GuardrailTestRequest, current_user: User = D
         text = re.sub(key_pattern, "[AWS_ACCESS_KEY_BLOCKED]", text)
         interventions.append({"type": "DENIED_TOPIC", "detail": "AWS Access Key pattern blocked"})
 
+    # SQL Injection Detection Checks
+    sqli_patterns = [
+        (r"(?i)(\bunion\b\s+select\b)", "UNION SELECT database extraction pattern"),
+        (r"(?i)(\bor\b\s+['\"]?1['\"]?\s*=\s*['\"]?1['\"])", "OR 1=1 Boolean-based authentication bypass"),
+        (r"(?i)(\b(drop|alter|truncate)\s+table\b)", "DDL table destruction statement"),
+        (r"(?i)(--\s*$|/\*.*?\*/|;\s*--)", "SQL comment truncation signature"),
+        (r"(?i)(\bexec\s*xp_\w+)", "SQL Server stored procedure execution"),
+    ]
+    for pattern, desc in sqli_patterns:
+        if re.search(pattern, text):
+            text = re.sub(pattern, "[BLOCKED_SQL_INJECTION_PAYLOAD]", text)
+            interventions.append({
+                "type": "SQL_INJECTION_BLOCK",
+                "detail": f"AWS WAF SQLi Signature intercepted: {desc}"
+            })
+
     # Prompt Attack / Injection Checks
     prompt_attack_keywords = [
         "ignore previous instructions",
         "system prompt",
         "print all secrets",
         "bypass security",
-        "drop table",
         "disregard safety",
     ]
     for kw in prompt_attack_keywords:
@@ -440,6 +455,51 @@ def simulate_threat(payload: ThreatSimulationRequest, current_user: User = Depen
                 "Isolate EC2 instance by attaching quarantine security group with no egress.",
                 "Create an Amazon EBS snapshot of the volume for forensic investigation.",
                 "Terminate compromised instance and allow ASG to launch a clean replacement."
+            ]
+        },
+        "DDOS_HTTP_FLOOD": {
+            "type": "Impact:ALB/DDoSHttpFloodVolumetric",
+            "title": "Simulated: Layer 7 Distributed Denial of Service (DDoS) HTTP Flood",
+            "description": "AWS Shield and GuardDuty detected sudden distributed volumetric flood exceeding 48,000 req/sec across 1,450 anomalous IP addresses targeting /api endpoints.",
+            "severity": "9.5",
+            "ai_severity": "CRITICAL",
+            "ai_risk": "Bedrock Claude 3: Extreme volumetric flood overwhelming Application Load Balancer target groups. Backend worker threads exhausting connection limits.",
+            "ai_fin": "Severe financial surge from Auto Scaling Group instance runaway scaling and ALB LCU data processing fees.",
+            "steps": [
+                "Activate AWS Shield Advanced automatic application layer DDoS mitigation on ALB.",
+                "Enforce AWS WAF rate-limiting rule (maximum 1,000 requests per 5-minute window per IP).",
+                "Enable Amazon CloudFront with origin shield to absorb high-velocity cached edge traffic.",
+                "Deploy challenge tokens or CAPTCHA actions on unauthenticated public endpoints."
+            ]
+        },
+        "SQL_INJECTION": {
+            "type": "Attack:RDS/SQLInjectionAttempt",
+            "title": "Simulated: SQL Injection (SQLi) Exploit on API Parameters",
+            "description": "AWS WAF Core Rule Set (AWSManagedRulesSQLiRuleSet) and GuardDuty intercepted SQL injection payload (e.g. ' UNION SELECT email, password_hash FROM users --) in URL query string.",
+            "severity": "8.9",
+            "ai_severity": "HIGH",
+            "ai_risk": "Bedrock Claude 3: Malicious actor attempting database schema extraction and credential dump via unparameterized query injection.",
+            "ai_fin": "High risk of regulatory fines (GDPR/PCI-DSS) and severe business disruption from customer credential leak.",
+            "steps": [
+                "Verify all database access strictly uses SQLAlchemy ORM parameter binding (no raw string interpolation).",
+                "Ensure AWS WAF SQLi rule group is set to BLOCK with immediate request termination.",
+                "Restrict MySQL/PostgreSQL application database user to least-privilege (revoke DROP and ALTER grants).",
+                "Rotate all application database connection credentials and review CloudWatch RDS slow query logs."
+            ]
+        },
+        "SYN_FLOOD": {
+            "type": "Impact:EC2/TcpSynFloodAnomalous",
+            "title": "Simulated: TCP SYN Flood Network Layer Exhaustion Attack",
+            "description": "VPC Flow Logs analysis and GuardDuty detected rapid TCP SYN packet burst (195,000 syn/sec) without ACK handshakes targeting ALB port 443.",
+            "severity": "8.7",
+            "ai_severity": "HIGH",
+            "ai_risk": "Bedrock Claude 3: Half-open TCP connection table exhaustion (SYN backlog starvation). Legitimate users experiencing connection timeouts and connection resets.",
+            "ai_fin": "Direct customer downtime and potential lost transaction revenue during critical operational periods.",
+            "steps": [
+                "Enable TCP SYN Cookies on EC2 instance kernels (net.ipv4.tcp_syncookies = 1).",
+                "Configure AWS Network Firewall or Security Group stateful inspection to drop spoofed IP ranges.",
+                "Engage AWS Shield Response Team (SRT) to place proactive Layer 4 BGP mitigation filters.",
+                "Adjust tcp_max_syn_backlog and reduce tcp_synack_retries to clear stale half-open sockets faster."
             ]
         }
     }

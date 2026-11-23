@@ -5,12 +5,15 @@ Write-Host "=========================================================" -Foregrou
 Write-Host "   Starting Expense Tracker Application Services" -ForegroundColor Cyan
 Write-Host "=========================================================" -ForegroundColor Cyan
 
-# 1. Start MySQL on port 3307
-Write-Host "`n[1/3] Starting MySQL 8.0 on port 3307..." -ForegroundColor Yellow
-Start-Process "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe" `
-    -ArgumentList "--datadir=`"$rootDir\database\mysqldata`" --port=3307 --console"
-
-Start-Sleep -Seconds 3
+# 1. Start MySQL on port 3307 if installed
+$mysqlPath = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe"
+if (Test-Path $mysqlPath) {
+    Write-Host "`n[1/3] Starting MySQL 8.0 on port 3307..." -ForegroundColor Yellow
+    Start-Process $mysqlPath -ArgumentList "--datadir=`"$rootDir\database\mysqldata`" --port=3307 --console"
+    Start-Sleep -Seconds 3
+} else {
+    Write-Host "`n[1/3] MySQL server binary not found; using SQLite database." -ForegroundColor Green
+}
 
 # 2. Start FastAPI Backend
 Write-Host "[2/3] Starting FastAPI Backend on http://localhost:8000..." -ForegroundColor Yellow
@@ -27,5 +30,4 @@ Write-Host "  All services launched successfully!" -ForegroundColor Green
 Write-Host "  - Frontend:  http://localhost:5173" -ForegroundColor Green
 Write-Host "  - Backend:   http://localhost:8000" -ForegroundColor Green
 Write-Host "  - API Docs:  http://localhost:8000/docs" -ForegroundColor Green
-Write-Host "  - MySQL DB:  localhost:3307" -ForegroundColor Green
 Write-Host "=========================================================`n" -ForegroundColor Green

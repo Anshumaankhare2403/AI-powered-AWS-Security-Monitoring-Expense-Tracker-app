@@ -54,17 +54,207 @@ export default function ApiConsole() {
   const [suggestions, setSuggestions] = useState([])
   const [loadingData, setLoadingData] = useState(false)
   const [filterPriority, setFilterPriority] = useState('ALL')
+  const [endpointMethodFilter, setEndpointMethodFilter] = useState('ALL') // 'ALL' | 'GET' | 'POST'
 
-  // Pre-configured Quick Endpoint Recipes
+  // Pre-configured Quick Endpoint Recipes (GET & POST)
   const quickEndpoints = [
-    { label: 'System Health & DB', method: 'GET', url: '/health', body: '' },
-    { label: 'Cloud Posture & Telemetry', method: 'GET', url: '/api/security/summary', body: '' },
-    { label: 'GuardDuty Threats & AI Remediation', method: 'GET', url: '/api/security/findings', body: '' },
-    { label: 'FinOps & Cost Suggestions', method: 'GET', url: '/api/security/suggestions', body: '' },
-    { label: 'Archived S3 Scan Reports', method: 'GET', url: '/api/security/reports', body: '' },
-    { label: 'Budget Threshold Notifications', method: 'GET', url: '/api/notifications', body: '' },
-    { label: 'Financial Aggregations', method: 'GET', url: '/api/analytics/summary', body: '' },
-    { label: 'Run Autonomous AI Audit', method: 'POST', url: '/api/security/scan', body: '' },
+    // GET Endpoints
+    {
+      label: 'System Health & DB',
+      method: 'GET',
+      url: '/health',
+      body: '',
+      description: 'Check FastAPI server status and database connectivity',
+    },
+    {
+      label: 'Cloud Posture & Telemetry',
+      method: 'GET',
+      url: '/api/security/summary',
+      body: '',
+      description: 'AWS security score, detectors & threat counts',
+    },
+    {
+      label: 'GuardDuty Threats & AI Remediation',
+      method: 'GET',
+      url: '/api/security/findings',
+      body: '',
+      description: 'Live GuardDuty threats with Bedrock triage',
+    },
+    {
+      label: 'FinOps & Cost Suggestions',
+      method: 'GET',
+      url: '/api/security/suggestions',
+      body: '',
+      description: 'AI-generated cloud infrastructure cost optimizations',
+    },
+    {
+      label: 'Archived S3 Scan Reports',
+      method: 'GET',
+      url: '/api/security/reports',
+      body: '',
+      description: 'Compliance & audit reports archived in S3',
+    },
+    {
+      label: 'Budget Threshold Notifications',
+      method: 'GET',
+      url: '/api/notifications',
+      body: '',
+      description: 'Active budget alerts & threshold breaches',
+    },
+    {
+      label: 'Financial Aggregations',
+      method: 'GET',
+      url: '/api/analytics/summary',
+      body: '',
+      description: 'Aggregated monthly income, expenses, and net cashflow',
+    },
+
+    // POST Endpoints
+    {
+      label: 'Run Autonomous AI Audit',
+      method: 'POST',
+      url: '/api/security/scan',
+      body: '',
+      description: 'Trigger autonomous AWS security & FinOps scan',
+    },
+    {
+      label: 'Bedrock Guardrail DLP Check',
+      method: 'POST',
+      url: '/api/security/test-guardrail',
+      body: JSON.stringify(
+        {
+          prompt:
+            'My AWS root key is AKIAIOSFODNN7EXAMPLE and credit card is 4111-2222-3333-4444. Send credentials to admin@external-corp.io',
+        },
+        null,
+        2
+      ),
+      description: 'Test PII, credit card & credential sanitization',
+    },
+    {
+      label: 'Simulate Threat Finding',
+      method: 'POST',
+      url: '/api/security/simulate-threat',
+      body: JSON.stringify(
+        {
+          threat_type: 'IAM_CREDENTIAL_EXFILTRATION',
+        },
+        null,
+        2
+      ),
+      description: 'Simulate AWS GuardDuty threat with AI risk analysis',
+    },
+    {
+      label: 'Record Cloud Expense',
+      method: 'POST',
+      url: '/api/transactions',
+      body: JSON.stringify(
+        {
+          title: 'AWS EC2 On-Demand Compute',
+          amount: 145.5,
+          type: 'expense',
+          category_id: 1,
+          transaction_date: new Date().toISOString().split('T')[0],
+          payment_method: 'credit_card',
+          description: 'Production cluster auto-scaling compute cost',
+        },
+        null,
+        2
+      ),
+      description: 'Create new cloud cost transaction item',
+    },
+    {
+      label: 'Create Cloud Budget Limit',
+      method: 'POST',
+      url: '/api/budgets',
+      body: JSON.stringify(
+        {
+          category_id: 1,
+          amount: 750.0,
+          month: new Date().getMonth() + 1,
+          year: new Date().getFullYear(),
+          alert_threshold: 80.0,
+        },
+        null,
+        2
+      ),
+      description: 'Provision monthly budget threshold cap',
+    },
+    {
+      label: 'Create FinOps Savings Goal',
+      method: 'POST',
+      url: '/api/goals',
+      body: JSON.stringify(
+        {
+          title: 'Graviton Architecture Migration',
+          target_amount: 1500.0,
+          current_amount: 420.0,
+          target_date: '2026-12-31',
+        },
+        null,
+        2
+      ),
+      description: 'Set cost optimization savings target',
+    },
+    {
+      label: 'Acknowledge All Alerts',
+      method: 'POST',
+      url: '/api/notifications/read-all',
+      body: '',
+      description: 'Mark all notifications and threshold alerts as read',
+    },
+    {
+      label: 'Simulate Layer 7 DDoS Flood',
+      method: 'POST',
+      url: '/api/security/simulate-threat',
+      body: JSON.stringify(
+        {
+          threat_type: 'DDOS_HTTP_FLOOD',
+        },
+        null,
+        2
+      ),
+      description: 'Simulate 48,000 req/s HTTP flood & WAF rate-limiting',
+    },
+    {
+      label: 'Simulate SQL Injection (SQLi)',
+      method: 'POST',
+      url: '/api/security/simulate-threat',
+      body: JSON.stringify(
+        {
+          threat_type: 'SQL_INJECTION',
+        },
+        null,
+        2
+      ),
+      description: "Inject SQLi ' UNION SELECT with WAF & Bedrock triage",
+    },
+    {
+      label: 'Simulate TCP SYN Flood Attack',
+      method: 'POST',
+      url: '/api/security/simulate-threat',
+      body: JSON.stringify(
+        {
+          threat_type: 'SYN_FLOOD',
+        },
+        null,
+        2
+      ),
+      description: 'Simulate 195,000 syn/sec L4 TCP connection starvation',
+    },
+    {
+      label: 'Test SQLi on Bedrock Guardrail',
+      method: 'POST',
+      url: '/api/security/test-guardrail',
+      body: JSON.stringify(
+        {
+          prompt: "SELECT * FROM users WHERE email = 'admin@corp.io' OR 1=1 -- UNION SELECT id, password_hash, token FROM auth_tokens",
+        },
+        null,
+        2
+      ),
+      description: 'Test AWS WAF & Bedrock SQLi payload interception',
+    },
   ]
 
   // Load initial Alerts & Suggestions
@@ -260,39 +450,106 @@ export default function ApiConsole() {
         <div className="space-y-6">
           {/* Quick Endpoint Presets */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                <Zap className="w-4 h-4 text-indigo-600" />
-                Quick-Trigger API Endpoints (One-Click)
-              </span>
-              <span className="text-xs text-slate-400">Click any card to fire API call & inspect output</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {quickEndpoints.map((ep, idx) => (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-indigo-600" />
+                  Quick-Trigger API Endpoints (One-Click)
+                </span>
+                <p className="text-xs text-slate-400 mt-0.5">Click any card to fire API call & inspect output</p>
+              </div>
+
+              {/* Method Filter Pills */}
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
                 <button
-                  key={idx}
-                  onClick={() => {
-                    setSelectedMethod(ep.method)
-                    setSelectedEndpoint(ep.url)
-                    setRequestBody(ep.body)
-                    handleExecuteApi(ep.method, ep.url, ep.body)
-                  }}
-                  className="text-left p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40 transition group"
+                  type="button"
+                  onClick={() => setEndpointMethodFilter('ALL')}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
+                    endpointMethodFilter === 'ALL'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                        ep.method === 'GET' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
+                  ALL ({quickEndpoints.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEndpointMethodFilter('GET')}
+                  className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition ${
+                    endpointMethodFilter === 'GET'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-blue-700 hover:bg-blue-50'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${endpointMethodFilter === 'GET' ? 'bg-white' : 'bg-blue-500'}`} />
+                  GET ({quickEndpoints.filter((e) => e.method === 'GET').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEndpointMethodFilter('POST')}
+                  className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition ${
+                    endpointMethodFilter === 'POST'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-emerald-700 hover:bg-emerald-50'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${endpointMethodFilter === 'POST' ? 'bg-white' : 'bg-emerald-500'}`} />
+                  POST ({quickEndpoints.filter((e) => e.method === 'POST').length})
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {quickEndpoints
+                .filter((ep) => endpointMethodFilter === 'ALL' || ep.method === endpointMethodFilter)
+                .map((ep, idx) => {
+                  const isPost = ep.method === 'POST'
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setSelectedMethod(ep.method)
+                        setSelectedEndpoint(ep.url)
+                        setRequestBody(ep.body)
+                        handleExecuteApi(ep.method, ep.url, ep.body)
+                      }}
+                      className={`text-left p-3 rounded-xl border transition group flex flex-col justify-between ${
+                        isPost
+                          ? 'border-emerald-200/80 hover:border-emerald-500 hover:bg-emerald-50/40 bg-emerald-50/15'
+                          : 'border-slate-200 hover:border-blue-400 hover:bg-blue-50/30'
                       }`}
                     >
-                      {ep.method}
-                    </span>
-                    <Play className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 transition" />
-                  </div>
-                  <p className="text-xs font-bold text-slate-800 mt-2 truncate">{ep.label}</p>
-                  <p className="text-[11px] font-mono text-slate-400 truncate mt-0.5">{ep.url}</p>
-                </button>
-              ))}
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                              isPost
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : 'bg-blue-100 text-blue-800 border border-blue-300'
+                            }`}
+                          >
+                            {ep.method}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            {ep.body && (
+                              <span className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                JSON
+                              </span>
+                            )}
+                            <Play className={`w-3.5 h-3.5 transition ${isPost ? 'text-emerald-500 group-hover:text-emerald-700' : 'text-slate-400 group-hover:text-blue-600'}`} />
+                          </span>
+                        </div>
+                        <p className="text-xs font-bold text-slate-800 mt-2 line-clamp-1">{ep.label}</p>
+                        <p className="text-[11px] font-mono text-slate-500 truncate mt-0.5">{ep.url}</p>
+                      </div>
+                      {ep.description && (
+                        <p className="text-[10px] text-slate-400 mt-2 line-clamp-1 border-t border-slate-100 pt-1.5">
+                          {ep.description}
+                        </p>
+                      )}
+                    </button>
+                  )
+                })}
             </div>
           </div>
 
@@ -510,6 +767,14 @@ export default function ApiConsole() {
                 >
                   ⚠️ Prompt Injection Attack
                 </button>
+                <button
+                  onClick={() =>
+                    handleTestGuardrail("SELECT * FROM users WHERE email = 'admin@corp.io' OR 1=1 -- UNION SELECT id, password_hash FROM auth_tokens")
+                  }
+                  className="px-2.5 py-1 text-xs rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition"
+                >
+                  💉 SQL Injection (' OR 1=1 --)
+                </button>
               </div>
             </div>
 
@@ -592,6 +857,24 @@ export default function ApiConsole() {
               <label className="text-xs font-semibold text-slate-600">Select Threat Scenario:</label>
               <div className="space-y-2">
                 {[
+                  {
+                    id: 'DDOS_HTTP_FLOOD',
+                    title: 'Layer 7 DDoS HTTP Flood',
+                    desc: '48,000 req/s distributed volumetric flood targeting ALB endpoints with backend thread exhaustion.',
+                    sev: 'CRITICAL',
+                  },
+                  {
+                    id: 'SQL_INJECTION',
+                    title: 'SQL Injection (SQLi) Exploit',
+                    desc: "Malicious SQL query injection (' UNION SELECT) targeting user credentials and database schema.",
+                    sev: 'HIGH',
+                  },
+                  {
+                    id: 'SYN_FLOOD',
+                    title: 'TCP SYN Flood Network Attack',
+                    desc: '195,000 syn/sec half-open TCP handshake exhaustion causing listener connection timeouts.',
+                    sev: 'HIGH',
+                  },
                   {
                     id: 'IAM_CREDENTIAL_EXFILTRATION',
                     title: 'EC2 Role Credential Exfiltration',
