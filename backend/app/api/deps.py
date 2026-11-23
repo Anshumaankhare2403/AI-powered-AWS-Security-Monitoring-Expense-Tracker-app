@@ -58,3 +58,24 @@ def get_current_user(
         )
         
     return user
+
+
+def is_user_admin(user: User) -> bool:
+    """Helper to check if a user possesses administrator privileges."""
+    admin_emails = {"admin@example.com", "anuj@example.com"}
+    return bool(getattr(user, "is_admin", False) or user.email.lower() in admin_emails)
+
+
+def get_current_admin_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """
+    Dependency that enforces strict administrator privileges.
+    Raises HTTP 403 Forbidden if a non-admin user attempts access.
+    """
+    if not is_user_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Administrator privileges required to access this resource.",
+        )
+    return current_user

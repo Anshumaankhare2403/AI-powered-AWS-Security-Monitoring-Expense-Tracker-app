@@ -134,12 +134,13 @@ export default function ApiConsole() {
 
     // --- USERS MODULE ---
     {
-      label: 'Local Users Database',
+      label: 'Local Users Database (Admin Only)',
       method: 'GET',
       url: '/api/users',
       module: 'USERS',
+      adminOnly: true,
       body: '',
-      description: 'Query all registered local users from the database',
+      description: 'Query all registered local users from database (Requires Admin Role)',
     },
     {
       label: 'Current User Profile',
@@ -150,10 +151,11 @@ export default function ApiConsole() {
       description: 'Fetch profile of current authenticated local user',
     },
     {
-      label: 'Create Local User',
+      label: 'Create Local User (Admin Only)',
       method: 'POST',
       url: '/api/users',
       module: 'USERS',
+      adminOnly: true,
       body: JSON.stringify(
         {
           email: 'newlocaluser@example.com',
@@ -165,7 +167,7 @@ export default function ApiConsole() {
         null,
         2
       ),
-      description: 'Directly provision a new user into the database',
+      description: 'Directly provision a new user into the database (Requires Admin Role)',
     },
 
     // --- SYSTEM & MONITORING ---
@@ -708,7 +710,12 @@ export default function ApiConsole() {
                                 AUTH
                               </span>
                             )}
-                            {ep.module === 'USERS' && (
+                            {ep.adminOnly && (
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                                ADMIN
+                              </span>
+                            )}
+                            {ep.module === 'USERS' && !ep.adminOnly && (
                               <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-300">
                                 USER
                               </span>

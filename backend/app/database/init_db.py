@@ -176,6 +176,7 @@ def init_db(db: Session = None):
             },
         ]
         for u in default_users:
+            is_adm = u["email"].lower() in ["admin@example.com", "anuj@example.com"]
             existing_user = db.query(User).filter(User.email == u["email"].lower()).first()
             if not existing_user:
                 new_user = User(
@@ -186,12 +187,14 @@ def init_db(db: Session = None):
                     theme=u["theme"],
                     is_active=True,
                     is_verified=True,
+                    is_admin=is_adm,
                 )
                 db.add(new_user)
-            elif u["email"].lower() in ["admin@example.com", "anuj@example.com"]:
+            elif is_adm:
                 existing_user.hashed_password = get_password_hash(u["password"])
                 existing_user.is_active = True
                 existing_user.is_verified = True
+                existing_user.is_admin = True
 
         db.commit()
     finally:

@@ -60,6 +60,7 @@ class UserOut(BaseModel):
     currency: str
     theme: str
     is_active: bool
+    is_admin: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -103,10 +103,17 @@ export function AuthProvider({ children }) {
 
   const currency = user?.currency || 'INR'
 
+  const isAdmin = Boolean(
+    user?.is_admin ||
+    user?.email?.toLowerCase() === 'admin@example.com' ||
+    user?.email?.toLowerCase() === 'anuj@example.com'
+  )
+
   return (
     <AuthContext.Provider
       value={{
         user,
+        isAdmin,
         loading,
         currency,
         notifications,

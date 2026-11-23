@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_admin_user
 from app.models.user import User
 
 logger = logging.getLogger("expense_tracker.security")
@@ -518,7 +518,7 @@ def test_bedrock_guardrail(payload: GuardrailTestRequest, current_user: User = D
 
 
 @router.post("/simulate-threat")
-def simulate_threat(payload: ThreatSimulationRequest, current_user: User = Depends(get_current_user)):
+def simulate_threat(payload: ThreatSimulationRequest, admin_user: User = Depends(get_current_admin_user)):
     """Simulates an incoming Amazon GuardDuty threat and invokes Bedrock AI analysis."""
     threat_templates = {
         "IAM_CREDENTIAL_EXFILTRATION": {
@@ -640,8 +640,8 @@ def simulate_threat(payload: ThreatSimulationRequest, current_user: User = Depen
 
 
 @router.post("/resolve/{finding_id}")
-def resolve_finding(finding_id: str, current_user: User = Depends(get_current_user)):
-    """Marks a finding as RESOLVED after remediation steps have been executed."""
+def resolve_finding(finding_id: str, admin_user: User = Depends(get_current_admin_user)):
+    """Marks a finding as RESOLVED after remediation steps have been executed. (Admin Only)"""
     for item in RUNTIME_FINDINGS:
         if item.get("finding_id") == finding_id:
             item["status"] = "RESOLVED"
@@ -650,8 +650,8 @@ def resolve_finding(finding_id: str, current_user: User = Depends(get_current_us
 
 
 @router.post("/scan")
-def trigger_security_scan(current_user: User = Depends(get_current_user)):
-    """Triggers an automated AI Security & FinOps scan."""
+def trigger_security_scan(admin_user: User = Depends(get_current_admin_user)):
+    """Triggers an automated AI Security & FinOps scan. (Admin Only)"""
     new_finding = {
         "finding_id": f"scan-{int(datetime.datetime.utcnow().timestamp())}",
         "timestamp": datetime.datetime.utcnow().isoformat(),

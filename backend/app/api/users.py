@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_admin_user, is_user_admin
 from app.core.security import get_password_hash, verify_password
 from app.database.session import get_db
 from app.models.user import User
@@ -21,6 +21,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 def get_current_user_profile(current_user: User = Depends(get_current_user)):
     """
     Retrieve profile details of the currently authenticated local user.
+    Accessible to all active users for their own account.
     """
     return current_user
 
@@ -33,6 +34,7 @@ def update_current_user_profile(
 ):
     """
     Update editable profile fields for the authenticated user (name, currency, theme, avatar).
+    Accessible to all active users for their own account.
     """
     if user_in.full_name is not None:
         current_user.full_name = user_in.full_name
@@ -56,6 +58,7 @@ def update_current_user_password(
 ):
     """
     Update password after verifying the existing credentials.
+    Accessible to all active users for their own account.
     """
     if not verify_password(req.current_password, current_user.hashed_password):
         raise HTTPException(
@@ -68,16 +71,17 @@ def update_current_user_password(
     return {"message": "Password changed successfully."}
 
 
-@router.get("", response_model=List[UserOut], summary="List all local users in database")
+@router.get("", response_model=List[UserOut], summary="List all users in database (Admin Only)")
 def list_users(
     skip: int = Query(0, ge=0, description="Records to skip"),
     limit: int = Query(50, ge=1, le=100, description="Max records to return"),
     search: Optional[str] = Query(None, description="Search by email or full name"),
-    current_user: User = Depends(get_current_user),
+    admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
     """
-    List all local users registered in the database with optional search & pagination.
+    List all local users registered in the database.
+    [RESTRICTED: Administrator Access Only] Non-admin users receive HTTP 403 Forbidden.
     """
     query = db.query(User)
     if search:
@@ -91,7 +95,7 @@ def list_users(
     return query.order_by(User.id.asc()).offset(skip).limit(limit).all()
 
 
-@router.get("/{user_id}", response_model=UserOut, summary="Get user by ID")
+@router.get("/{user_id}", response_model=UserOut, summary="Get user by ID (Owner or Admin Only)")
 def get_user_by_id(
     user_id: int,
     current_user: User = Depends(get_current_user),
@@ -99,7 +103,15 @@ def get_user_by_id(
 ):
     """
     Fetch a single user by their primary key ID.
+    [RESTRICTED] Regular users can only access their own user profile (user_id == current_user.id).
+    Accessing other users' profiles requires administrator privileges (HTTP 403 if unauthorized).
     """
+    if current_user.id != user_id and not is_user_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: You can only view your own account. Administrator privileges required to inspect other users.",
+        )
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
@@ -109,13 +121,15 @@ def get_user_by_id(
     return user
 
 
-@router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED, summary="Create a new local user")
+@router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED, summary="Create a new local user (Admin Only)")
 def create_local_user(
     user_in: UserCreate,
+    admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
     """
-    Directly provision a new user in the database (local / administrator use).
+    Directly provision a new user in the database.
+    [RESTRICTED: Administrator Access Only] Standard users must register via /api/auth/register.
     """
     existing_user = db.query(User).filter(User.email == user_in.email.lower()).first()
     if existing_user:
@@ -133,6 +147,7 @@ def create_local_user(
         theme=user_in.theme or "system",
         is_active=True,
         is_verified=True,
+        is_admin=False,
     )
     db.add(new_user)
     db.commit()
@@ -140,14 +155,15 @@ def create_local_user(
     return new_user
 
 
-@router.delete("/{user_id}", summary="Deactivate or delete user by ID")
+@router.delete("/{user_id}", summary="Deactivate user by ID (Admin Only)")
 def delete_user(
     user_id: int,
-    current_user: User = Depends(get_current_user),
+    admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
     """
     Deactivate a user account by ID.
+    [RESTRICTED: Administrator Access Only]
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
