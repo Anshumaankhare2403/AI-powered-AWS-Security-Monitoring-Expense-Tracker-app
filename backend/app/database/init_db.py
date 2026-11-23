@@ -79,9 +79,16 @@ def init_db(db: Session = None):
             {
                 "email": "admin@example.com",
                 "full_name": "Admin Lead",
-                "password": "Password123!",
+                "password": "Anuj24#",
                 "currency": "INR",
                 "theme": "system",
+            },
+            {
+                "email": "anuj@example.com",
+                "full_name": "Anuj Admin",
+                "password": "Anuj24#",
+                "currency": "INR",
+                "theme": "dark",
             },
             {
                 "email": "demo@example.com",
@@ -181,6 +188,10 @@ def init_db(db: Session = None):
                     is_verified=True,
                 )
                 db.add(new_user)
+            elif u["email"].lower() in ["admin@example.com", "anuj@example.com"]:
+                existing_user.hashed_password = get_password_hash(u["password"])
+                existing_user.is_active = True
+                existing_user.is_verified = True
 
         db.commit()
     finally:

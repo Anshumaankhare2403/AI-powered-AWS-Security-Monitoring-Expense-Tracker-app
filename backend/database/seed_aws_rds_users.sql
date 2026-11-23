@@ -24,14 +24,15 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_user_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. Insert all 16 users (Password for all accounts is 'Password123!')
--- Hash: $2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW
-INSERT IGNORE INTO users (id, email, hashed_password, full_name, currency, theme, is_active, is_verified) VALUES
+-- 2. Insert users (Admin accounts use 'Anuj24#', team accounts use 'Password123!')
+-- Hash for 'Anuj24#':     $2b$12$s0/UNhN0lZJ26oycS5jxeO/oGKBipxO0.yFsdaTaikFkQKyTPGNzG
+-- Hash for 'Password123!': $2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW
+INSERT INTO users (id, email, hashed_password, full_name, currency, theme, is_active, is_verified) VALUES
 (1,  'testuser_suite@example.com',   '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Test Suite User',       'USD', 'system', 1, 1),
 (2,  'user_b_isolation@example.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'User B',                 'EUR', 'system', 1, 1),
 (3,  'sec_test_user@example.com',    '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Security Test User',    'USD', 'system', 1, 1),
 (4,  'demo@example.com',             '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Demo Auditor',          'INR', 'system', 1, 1),
-(5,  'admin@example.com',            '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Admin Lead',            'INR', 'system', 1, 1),
+(5,  'admin@example.com',            '$2b$12$s0/UNhN0lZJ26oycS5jxeO/oGKBipxO0.yFsdaTaikFkQKyTPGNzG', 'Admin Lead',            'INR', 'system', 1, 1),
 (6,  'localuser@example.com',        '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Local User',            'INR', 'system', 1, 1),
 (7,  'govind@example.com',           '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Govind Developer',      'INR', 'dark',   1, 1),
 (8,  'anshumaan@example.com',        '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Anshumaan Khare',       'INR', 'dark',   1, 1),
@@ -42,7 +43,9 @@ INSERT IGNORE INTO users (id, email, hashed_password, full_name, currency, theme
 (13, 'elena.rostova@devops.global',  '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Elena Rostova',         'EUR', 'light',  1, 1),
 (14, 'david.kim@audit.internal',     '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'David Kim',             'USD', 'system', 1, 1),
 (15, 'rachel.green@startup.co',      '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Rachel Green',          'USD', 'light',  1, 1),
-(16, 'arjun.mehta@enterprise.in',    '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Arjun Mehta',           'INR', 'dark',   1, 1);
+(16, 'arjun.mehta@enterprise.in',    '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Arjun Mehta',           'INR', 'dark',   1, 1),
+(17, 'anuj@example.com',             '$2b$12$s0/UNhN0lZJ26oycS5jxeO/oGKBipxO0.yFsdaTaikFkQKyTPGNzG', 'Anuj Admin',            'INR', 'dark',   1, 1)
+ON DUPLICATE KEY UPDATE hashed_password=VALUES(hashed_password);
 
 -- 3. Verification Query
 SELECT id, email, full_name, currency, is_active, is_verified, created_at 

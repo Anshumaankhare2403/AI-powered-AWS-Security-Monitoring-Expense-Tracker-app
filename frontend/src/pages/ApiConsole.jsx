@@ -62,7 +62,22 @@ export default function ApiConsole() {
   const quickEndpoints = [
     // --- AUTHENTICATION MODULE ---
     {
-      label: 'Auth Login (JWT)',
+      label: 'Admin Login (Anuj24#)',
+      method: 'POST',
+      url: '/api/auth/login',
+      module: 'AUTH',
+      body: JSON.stringify(
+        {
+          email: 'admin@example.com',
+          password: 'Anuj24#',
+        },
+        null,
+        2
+      ),
+      description: 'Authenticate as Admin using credentials admin@example.com / Anuj24#',
+    },
+    {
+      label: 'Auth Login (Demo)',
       method: 'POST',
       url: '/api/auth/login',
       module: 'AUTH',
