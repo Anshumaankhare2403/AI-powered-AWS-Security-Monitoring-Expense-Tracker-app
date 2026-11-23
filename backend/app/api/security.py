@@ -279,12 +279,82 @@ def get_ai_suggestions(current_user: User = Depends(get_current_user)):
 def test_bedrock_guardrail(payload: GuardrailTestRequest, current_user: User = Depends(get_current_user)):
     """
     Live test of Amazon Bedrock Guardrail sanitization.
-    Detects PII (credit cards, emails, keys) and prompt injections.
+    Directly invokes the AWS Bedrock Runtime apply_guardrail API if AWS credentials are present,
+    with automatic fallback to local regex heuristics.
     """
+    guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID", "0ddzpzhr3pnp")
+    guardrail_version = os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT")
+    region = os.environ.get("AWS_REGION", "us-east-1")
+
+    # 1. Attempt live invocation of real AWS Bedrock apply_guardrail
+    try:
+        import boto3
+        bedrock_client = boto3.client("bedrock-runtime", region_name=region)
+        bedrock_resp = bedrock_client.apply_guardrail(
+            guardrailIdentifier=guardrail_id,
+            guardrailVersion=guardrail_version,
+            source="INPUT",
+            content=[{"text": {"text": payload.prompt}}]
+        )
+        action = bedrock_resp.get("action", "NONE")
+        assessments = bedrock_resp.get("assessments", [])
+
+        interventions = []
+        for a in assessments:
+            if "sensitiveInformationPolicy" in a:
+                for pii in a["sensitiveInformationPolicy"].get("piiEntities", []):
+                    interventions.append({
+                        "type": "PII_MASKING",
+                        "detail": f"Amazon Bedrock PII Masking: {pii.get('type')} detected (action: {pii.get('action')})"
+                    })
+                for reg in a["sensitiveInformationPolicy"].get("regexes", []):
+                    interventions.append({
+                        "type": "PII_MASKING",
+                        "detail": f"Amazon Bedrock Custom Regex: {reg.get('name')} detected"
+                    })
+            if "topicPolicy" in a:
+                for topic in a["topicPolicy"].get("topics", []):
+                    interventions.append({
+                        "type": "DENIED_TOPIC",
+                        "detail": f"Amazon Bedrock Denied Topic: '{topic.get('name')}' (action: {topic.get('action')})"
+                    })
+            if "contentPolicy" in a:
+                for filter_item in a["contentPolicy"].get("filters", []):
+                    interventions.append({
+                        "type": "CONTENT_FILTER",
+                        "detail": f"Amazon Bedrock Content Filter: {filter_item.get('type')} (confidence: {filter_item.get('confidence')})"
+                    })
+
+        if not interventions and action == "GUARDRAIL_INTERVENED":
+            interventions.append({
+                "type": "GUARDRAIL_BLOCKED",
+                "detail": "Amazon Bedrock Guardrail blocked input prompt due to policy violation."
+            })
+
+        output_text = payload.prompt
+        if "outputs" in bedrock_resp and len(bedrock_resp["outputs"]) > 0:
+            output_text = bedrock_resp["outputs"][0].get("text", payload.prompt)
+
+        return {
+            "action": "GUARDRAIL_INTERVENED" if action != "NONE" else "PASSED_TO_BEDROCK",
+            "execution_mode": "LIVE_AWS_BEDROCK",
+            "original_prompt": payload.prompt,
+            "sanitized_output": output_text,
+            "interventions": interventions if interventions else [{"type": "NONE", "detail": "All checks passed"}],
+            "bedrock_guardrail_id": guardrail_id,
+            "bedrock_guardrail_arn": f"arn:aws:bedrock:{region}:075858439116:guardrail/{guardrail_id}",
+            "foundation_model_status": f"Active Amazon Bedrock Guardrail ({guardrail_id}) in {region}",
+            "assessments": assessments,
+            "response_timestamp": datetime.datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        logger.warning(f"Live Bedrock apply_guardrail unavailable ({e}). Falling back to local heuristic engine.")
+
+    # 2. Local Fallback Heuristics
     text = payload.prompt
     interventions = []
 
-    # 1. PII Regex Checks
+    # PII Regex Checks
     cc_pattern = r'\b(?:\d{4}[ -]?){3}\d{4}\b'
     if re.search(cc_pattern, text):
         text = re.sub(cc_pattern, "****-****-****-1234", text)
@@ -300,7 +370,7 @@ def test_bedrock_guardrail(payload: GuardrailTestRequest, current_user: User = D
         text = re.sub(key_pattern, "[AWS_ACCESS_KEY_BLOCKED]", text)
         interventions.append({"type": "DENIED_TOPIC", "detail": "AWS Access Key pattern blocked"})
 
-    # 2. Prompt Attack / Injection Checks
+    # Prompt Attack / Injection Checks
     prompt_attack_keywords = [
         "ignore previous instructions",
         "system prompt",
@@ -317,10 +387,11 @@ def test_bedrock_guardrail(payload: GuardrailTestRequest, current_user: User = D
 
     return {
         "action": action,
+        "execution_mode": "LOCAL_FALLBACK_SIMULATION",
         "original_prompt": payload.prompt,
         "sanitized_output": text,
         "interventions": interventions,
-        "bedrock_guardrail_id": "ExpenseTrackerSecurityGuardrail-v1",
+        "bedrock_guardrail_id": guardrail_id,
         "foundation_model_status": "Protected by Bedrock Content & PII Policies",
         "response_timestamp": datetime.datetime.utcnow().isoformat(),
     }
