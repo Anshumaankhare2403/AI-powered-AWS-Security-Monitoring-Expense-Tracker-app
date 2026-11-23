@@ -15,6 +15,8 @@ import {
   RefreshCw,
   Send,
   Lock,
+  Key,
+  Users,
   Filter,
   ArrowRight,
   Activity,
@@ -54,64 +56,73 @@ export default function ApiConsole() {
   const [suggestions, setSuggestions] = useState([])
   const [loadingData, setLoadingData] = useState(false)
   const [filterPriority, setFilterPriority] = useState('ALL')
-  const [endpointMethodFilter, setEndpointMethodFilter] = useState('ALL') // 'ALL' | 'GET' | 'POST'
+  const [endpointMethodFilter, setEndpointMethodFilter] = useState('ALL') // 'ALL' | 'AUTH' | 'SECURITY' | 'GET' | 'POST'
 
-  // Pre-configured Quick Endpoint Recipes (GET & POST)
+  // Pre-configured Quick Endpoint Recipes (GET & POST) with Module Classification
   const quickEndpoints = [
-    // GET Endpoints
+    // --- AUTHENTICATION MODULE ---
     {
-      label: 'System Health & DB',
-      method: 'GET',
-      url: '/health',
-      body: '',
-      description: 'Check FastAPI server status and database connectivity',
+      label: 'Auth Login (JWT)',
+      method: 'POST',
+      url: '/api/auth/login',
+      module: 'AUTH',
+      body: JSON.stringify(
+        {
+          email: 'demo@example.com',
+          password: 'Password123!',
+        },
+        null,
+        2
+      ),
+      description: 'Authenticate user credentials & issue JWT access + refresh tokens',
     },
     {
-      label: 'Cloud Posture & Telemetry',
-      method: 'GET',
-      url: '/api/security/summary',
-      body: '',
-      description: 'AWS security score, detectors & threat counts',
+      label: 'Auth Register User',
+      method: 'POST',
+      url: '/api/auth/register',
+      module: 'AUTH',
+      body: JSON.stringify(
+        {
+          email: 'developer@finops.corp',
+          full_name: 'Lead Cloud Auditor',
+          password: 'Password123!',
+          currency: 'INR',
+          theme: 'dark',
+        },
+        null,
+        2
+      ),
+      description: 'Provision new tenant account with password hashing & JWT tokens',
     },
     {
-      label: 'GuardDuty Threats & AI Remediation',
+      label: 'Auth Session Check (/auth/me)',
       method: 'GET',
-      url: '/api/security/findings',
+      url: '/api/auth/me',
+      module: 'AUTH',
       body: '',
-      description: 'Live GuardDuty threats with Bedrock triage',
+      description: 'Verify current JWT Bearer token & authenticated user profile',
     },
     {
-      label: 'FinOps & Cost Suggestions',
-      method: 'GET',
-      url: '/api/security/suggestions',
-      body: '',
-      description: 'AI-generated cloud infrastructure cost optimizations',
+      label: 'Forgot Password Request',
+      method: 'POST',
+      url: '/api/auth/forgot-password',
+      module: 'AUTH',
+      body: JSON.stringify(
+        {
+          email: 'demo@example.com',
+        },
+        null,
+        2
+      ),
+      description: 'Issue secure 32-byte password reset token for verification',
     },
-    {
-      label: 'Archived S3 Scan Reports',
-      method: 'GET',
-      url: '/api/security/reports',
-      body: '',
-      description: 'Compliance & audit reports archived in S3',
-    },
-    {
-      label: 'Budget Threshold Notifications',
-      method: 'GET',
-      url: '/api/notifications',
-      body: '',
-      description: 'Active budget alerts & threshold breaches',
-    },
-    {
-      label: 'Financial Aggregations',
-      method: 'GET',
-      url: '/api/analytics/summary',
-      body: '',
-      description: 'Aggregated monthly income, expenses, and net cashflow',
-    },
+
+    // --- USERS MODULE ---
     {
       label: 'Local Users Database',
       method: 'GET',
       url: '/api/users',
+      module: 'USERS',
       body: '',
       description: 'Query all registered local users from the database',
     },
@@ -119,15 +130,15 @@ export default function ApiConsole() {
       label: 'Current User Profile',
       method: 'GET',
       url: '/api/users/me',
+      module: 'USERS',
       body: '',
       description: 'Fetch profile of current authenticated local user',
     },
-
-    // POST Endpoints
     {
       label: 'Create Local User',
       method: 'POST',
       url: '/api/users',
+      module: 'USERS',
       body: JSON.stringify(
         {
           email: 'newlocaluser@example.com',
@@ -140,6 +151,64 @@ export default function ApiConsole() {
         2
       ),
       description: 'Directly provision a new user into the database',
+    },
+
+    // --- SYSTEM & MONITORING ---
+    {
+      label: 'System Health & DB',
+      method: 'GET',
+      url: '/health',
+      module: 'SYSTEM',
+      body: '',
+      description: 'Check FastAPI server status and database connectivity',
+    },
+    {
+      label: 'Cloud Posture & Telemetry',
+      method: 'GET',
+      url: '/api/security/summary',
+      module: 'SECURITY',
+      body: '',
+      description: 'AWS security score, detectors & threat counts',
+    },
+    {
+      label: 'GuardDuty Threats & AI Remediation',
+      method: 'GET',
+      url: '/api/security/findings',
+      module: 'SECURITY',
+      body: '',
+      description: 'Live GuardDuty threats with Bedrock triage',
+    },
+    {
+      label: 'FinOps & Cost Suggestions',
+      method: 'GET',
+      url: '/api/security/suggestions',
+      module: 'SECURITY',
+      body: '',
+      description: 'AI-generated cloud infrastructure cost optimizations',
+    },
+    {
+      label: 'Archived S3 Scan Reports',
+      method: 'GET',
+      url: '/api/security/reports',
+      module: 'SECURITY',
+      body: '',
+      description: 'Compliance & audit reports archived in S3',
+    },
+    {
+      label: 'Budget Threshold Notifications',
+      method: 'GET',
+      url: '/api/notifications',
+      module: 'FINANCE',
+      body: '',
+      description: 'Active budget alerts & threshold breaches',
+    },
+    {
+      label: 'Financial Aggregations',
+      method: 'GET',
+      url: '/api/analytics/summary',
+      module: 'FINANCE',
+      body: '',
+      description: 'Aggregated monthly income, expenses, and net cashflow',
     },
     {
       label: 'Run Autonomous AI Audit',
@@ -328,9 +397,21 @@ export default function ApiConsole() {
 
       if (method === 'GET') {
         res = await axios.get(fullUrl, { headers })
+      } else if (method === 'PUT') {
+        const parsedBody = body.trim() ? JSON.parse(body) : {}
+        res = await axios.put(fullUrl, parsedBody, { headers })
+      } else if (method === 'DELETE') {
+        res = await axios.delete(fullUrl, { headers })
       } else {
         const parsedBody = body.trim() ? JSON.parse(body) : {}
         res = await axios.post(fullUrl, parsedBody, { headers })
+      }
+
+      // Automatically sync newly issued Auth tokens to current session
+      if (res.data?.access_token) {
+        localStorage.setItem('token', res.data.access_token)
+        if (res.data.refresh_token) localStorage.setItem('refreshToken', res.data.refresh_token)
+        if (res.data.user) localStorage.setItem('user', JSON.stringify(res.data.user))
       }
 
       const endTime = performance.now()
@@ -490,8 +571,8 @@ export default function ApiConsole() {
                 <p className="text-xs text-slate-400 mt-0.5">Click any card to fire API call & inspect output</p>
               </div>
 
-              {/* Method Filter Pills */}
-              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
+              {/* Module & Method Filter Pills */}
+              <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
                 <button
                   type="button"
                   onClick={() => setEndpointMethodFilter('ALL')}
@@ -502,6 +583,42 @@ export default function ApiConsole() {
                   }`}
                 >
                   ALL ({quickEndpoints.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEndpointMethodFilter('AUTH')}
+                  className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition ${
+                    endpointMethodFilter === 'AUTH'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-purple-700 hover:bg-purple-50'
+                  }`}
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  AUTH ({quickEndpoints.filter((e) => e.module === 'AUTH').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEndpointMethodFilter('USERS')}
+                  className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition ${
+                    endpointMethodFilter === 'USERS'
+                      ? 'bg-sky-600 text-white shadow-sm'
+                      : 'text-sky-700 hover:bg-sky-50'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  USERS ({quickEndpoints.filter((e) => e.module === 'USERS').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEndpointMethodFilter('SECURITY')}
+                  className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition ${
+                    endpointMethodFilter === 'SECURITY'
+                      ? 'bg-rose-600 text-white shadow-sm'
+                      : 'text-rose-700 hover:bg-rose-50'
+                  }`}
+                >
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  SECURITY
                 </button>
                 <button
                   type="button"
@@ -532,9 +649,16 @@ export default function ApiConsole() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {quickEndpoints
-                .filter((ep) => endpointMethodFilter === 'ALL' || ep.method === endpointMethodFilter)
+                .filter((ep) => {
+                  if (endpointMethodFilter === 'ALL') return true
+                  if (endpointMethodFilter === 'AUTH') return ep.module === 'AUTH'
+                  if (endpointMethodFilter === 'USERS') return ep.module === 'USERS'
+                  if (endpointMethodFilter === 'SECURITY') return ep.module === 'SECURITY'
+                  return ep.method === endpointMethodFilter
+                })
                 .map((ep, idx) => {
                   const isPost = ep.method === 'POST'
+                  const isAuth = ep.module === 'AUTH'
                   return (
                     <button
                       key={idx}
@@ -545,29 +669,43 @@ export default function ApiConsole() {
                         handleExecuteApi(ep.method, ep.url, ep.body)
                       }}
                       className={`text-left p-3 rounded-xl border transition group flex flex-col justify-between ${
-                        isPost
+                        isAuth
+                          ? 'border-purple-200/80 hover:border-purple-500 hover:bg-purple-50/40 bg-purple-50/15'
+                          : isPost
                           ? 'border-emerald-200/80 hover:border-emerald-500 hover:bg-emerald-50/40 bg-emerald-50/15'
                           : 'border-slate-200 hover:border-blue-400 hover:bg-blue-50/30'
                       }`}
                     >
                       <div>
                         <div className="flex items-center justify-between">
-                          <span
-                            className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                              isPost
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                : 'bg-blue-100 text-blue-800 border border-blue-300'
-                            }`}
-                          >
-                            {ep.method}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                                isPost
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                  : 'bg-blue-100 text-blue-800 border border-blue-300'
+                              }`}
+                            >
+                              {ep.method}
+                            </span>
+                            {isAuth && (
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
+                                AUTH
+                              </span>
+                            )}
+                            {ep.module === 'USERS' && (
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-300">
+                                USER
+                              </span>
+                            )}
+                          </div>
                           <span className="flex items-center gap-1">
                             {ep.body && (
                               <span className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
                                 JSON
                               </span>
                             )}
-                            <Play className={`w-3.5 h-3.5 transition ${isPost ? 'text-emerald-500 group-hover:text-emerald-700' : 'text-slate-400 group-hover:text-blue-600'}`} />
+                            <Play className={`w-3.5 h-3.5 transition ${isAuth ? 'text-purple-500 group-hover:text-purple-700' : isPost ? 'text-emerald-500 group-hover:text-emerald-700' : 'text-slate-400 group-hover:text-blue-600'}`} />
                           </span>
                         </div>
                         <p className="text-xs font-bold text-slate-800 mt-2 line-clamp-1">{ep.label}</p>
