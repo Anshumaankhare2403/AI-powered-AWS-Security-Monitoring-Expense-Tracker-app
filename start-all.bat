@@ -6,12 +6,14 @@ echo =========================================================
 
 set ROOT_DIR=%~dp0
 
-:: 1. Start MySQL on port 3307
-echo [1/3] Starting MySQL 8.0 on port 3307...
-start "Expense Tracker - MySQL Database (Port 3307)" "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe" --datadir="%ROOT_DIR%database\mysqldata" --port=3307 --console
-
-:: Brief pause to let MySQL initialize
-timeout /t 3 /nobreak >nul
+:: 1. Start MySQL on port 3307 if installed
+if exist "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe" (
+    echo [1/3] Starting MySQL 8.0 on port 3307...
+    start "Expense Tracker - MySQL Database (Port 3307)" "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe" --datadir="%ROOT_DIR%database\mysqldata" --port=3307 --console
+    timeout /t 3 /nobreak >nul
+) else (
+    echo [1/3] MySQL server not installed; using SQLite database.
+)
 
 :: 2. Start FastAPI Backend
 echo [2/3] Starting FastAPI Backend on http://localhost:8000 ...
@@ -30,6 +32,5 @@ echo All services launched!
 echo - Frontend:  http://localhost:5173
 echo - Backend:   http://localhost:8000
 echo - API Docs:  http://localhost:8000/docs
-echo - MySQL DB:  localhost:3307
 echo =========================================================
 echo.
