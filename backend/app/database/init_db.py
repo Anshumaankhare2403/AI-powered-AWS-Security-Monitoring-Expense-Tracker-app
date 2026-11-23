@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from app.database.session import Base, engine, SessionLocal
 from app.models.category import Category
+from app.models.user import User
+from app.core.security import get_password_hash
 import app.models  # Ensure all models are registered with Base.metadata
 
 DEFAULT_EXPENSE_CATEGORIES = [
@@ -71,6 +73,44 @@ def init_db(db: Session = None):
                     is_default=True
                 )
                 db.add(category)
+
+        # Seed default users if they don't exist
+        default_users = [
+            {
+                "email": "admin@example.com",
+                "full_name": "Admin Lead",
+                "password": "Password123!",
+                "currency": "INR",
+                "theme": "system",
+            },
+            {
+                "email": "demo@example.com",
+                "full_name": "Demo Auditor",
+                "password": "Password123!",
+                "currency": "INR",
+                "theme": "system",
+            },
+            {
+                "email": "localuser@example.com",
+                "full_name": "Local User",
+                "password": "Password123!",
+                "currency": "INR",
+                "theme": "system",
+            },
+        ]
+        for u in default_users:
+            existing_user = db.query(User).filter(User.email == u["email"].lower()).first()
+            if not existing_user:
+                new_user = User(
+                    email=u["email"].lower(),
+                    hashed_password=get_password_hash(u["password"]),
+                    full_name=u["full_name"],
+                    currency=u["currency"],
+                    theme=u["theme"],
+                    is_active=True,
+                    is_verified=True,
+                )
+                db.add(new_user)
 
         db.commit()
     finally:

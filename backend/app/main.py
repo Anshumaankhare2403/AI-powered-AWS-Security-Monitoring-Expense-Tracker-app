@@ -12,6 +12,7 @@ from app.database.init_db import init_db
 # Import all API routers
 from app.api import (
     auth,
+    users,
     categories,
     transactions,
     budgets,
@@ -72,6 +73,7 @@ app.add_middleware(
 
 # Register API Routers under /api
 app.include_router(auth.router, prefix=settings.API_V1_STR)
+app.include_router(users.router, prefix=settings.API_V1_STR)
 app.include_router(categories.router, prefix=settings.API_V1_STR)
 app.include_router(transactions.router, prefix=settings.API_V1_STR)
 app.include_router(budgets.router, prefix=settings.API_V1_STR)
@@ -92,6 +94,7 @@ def read_root():
         "docs": "/docs",
         "endpoints": {
             "auth": f"{settings.API_V1_STR}/auth",
+            "users": f"{settings.API_V1_STR}/users",
             "transactions": f"{settings.API_V1_STR}/transactions",
             "categories": f"{settings.API_V1_STR}/categories",
             "budgets": f"{settings.API_V1_STR}/budgets",

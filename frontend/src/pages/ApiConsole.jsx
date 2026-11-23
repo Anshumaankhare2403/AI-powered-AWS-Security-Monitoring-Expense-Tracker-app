@@ -108,8 +108,39 @@ export default function ApiConsole() {
       body: '',
       description: 'Aggregated monthly income, expenses, and net cashflow',
     },
+    {
+      label: 'Local Users Database',
+      method: 'GET',
+      url: '/api/users',
+      body: '',
+      description: 'Query all registered local users from the database',
+    },
+    {
+      label: 'Current User Profile',
+      method: 'GET',
+      url: '/api/users/me',
+      body: '',
+      description: 'Fetch profile of current authenticated local user',
+    },
 
     // POST Endpoints
+    {
+      label: 'Create Local User',
+      method: 'POST',
+      url: '/api/users',
+      body: JSON.stringify(
+        {
+          email: 'newlocaluser@example.com',
+          full_name: 'New Local User',
+          password: 'Password123!',
+          currency: 'INR',
+          theme: 'system',
+        },
+        null,
+        2
+      ),
+      description: 'Directly provision a new user into the database',
+    },
     {
       label: 'Run Autonomous AI Audit',
       method: 'POST',
