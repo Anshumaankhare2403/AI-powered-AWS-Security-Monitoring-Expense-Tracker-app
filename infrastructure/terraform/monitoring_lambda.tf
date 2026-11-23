@@ -1,5 +1,6 @@
 # GuardDuty Threat Detection
 resource "aws_guardduty_detector" "primary" {
+  count                        = var.enable_guardduty ? 1 : 0
   enable                       = true
   finding_publishing_frequency = "FIFTEEN_MINUTES"
 
@@ -81,7 +82,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "guardduty:GetFindings",
           "guardduty:ListFindings"
         ]
-        Resource = aws_guardduty_detector.primary.arn
+        Resource = var.enable_guardduty && length(aws_guardduty_detector.primary) > 0 ? aws_guardduty_detector.primary[0].arn : "*"
       }
     ]
   })
@@ -112,7 +113,6 @@ resource "aws_lambda_function" "security_scanner" {
       BEDROCK_MODEL_ID          = var.bedrock_model_id
       BEDROCK_GUARDRAIL_ID      = aws_bedrock_guardrail.security_guardrail.guardrail_id
       BEDROCK_GUARDRAIL_VERSION = "DRAFT"
-      AWS_DEFAULT_REGION        = var.aws_region
     }
   }
 

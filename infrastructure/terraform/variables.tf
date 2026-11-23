@@ -126,3 +126,16 @@ variable "enable_waf" {
   type        = bool
   default     = true
 }
+
+variable "enable_cloudfront" {
+  description = "Whether to deploy CloudFront distribution (requires verified AWS account)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_guardduty" {
+  description = "Whether to create GuardDuty detector (requires active GuardDuty subscription in AWS account)"
+  type        = bool
+  default     = false
+}
+

@@ -1,5 +1,6 @@
 # CloudFront Origin Access Control for S3 Frontend
 resource "aws_cloudfront_origin_access_control" "frontend_oac" {
+  count                             = var.enable_cloudfront ? 1 : 0
   name                              = "${var.environment}-frontend-oac-${random_string.suffix.result}"
   description                       = "OAC for static React Frontend S3 bucket"
   origin_access_control_origin_type = "s3"
@@ -9,17 +10,18 @@ resource "aws_cloudfront_origin_access_control" "frontend_oac" {
 
 # CloudFront Distribution Routing Frontend (S3) and API (/api/*, /health to API Gateway)
 resource "aws_cloudfront_distribution" "frontend_distribution" {
+  count               = var.enable_cloudfront ? 1 : 0
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
   comment             = "${var.environment} Expense Tracker Frontend & API Distribution"
-  web_acl_id          = var.enable_waf ? aws_wafv2_web_acl.cloudfront_waf.arn : null
+  web_acl_id          = var.enable_waf && var.enable_cloudfront && length(aws_wafv2_web_acl.cloudfront_waf) > 0 ? aws_wafv2_web_acl.cloudfront_waf[0].arn : null
 
   # Origin 1: React Frontend in S3
   origin {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
     origin_id                = "S3FrontendOrigin"
-    origin_access_control_id = aws_cloudfront_origin_access_control.frontend_oac.id
+    origin_access_control_id = aws_cloudfront_origin_access_control.frontend_oac[0].id
   }
 
   # Origin 2: API Gateway HTTP API
@@ -128,6 +130,7 @@ resource "aws_cloudfront_distribution" "frontend_distribution" {
 
 # S3 Bucket Policy allowing CloudFront OAC Read Access
 resource "aws_s3_bucket_policy" "frontend_policy" {
+  count  = var.enable_cloudfront ? 1 : 0
   bucket = aws_s3_bucket.frontend.id
 
   policy = jsonencode({
@@ -142,7 +145,7 @@ resource "aws_s3_bucket_policy" "frontend_policy" {
       Resource = "${aws_s3_bucket.frontend.arn}/*"
       Condition = {
         StringEquals = {
-          "AWS:SourceArn" = aws_cloudfront_distribution.frontend_distribution.arn
+          "AWS:SourceArn" = aws_cloudfront_distribution.frontend_distribution[0].arn
         }
       }
     }]

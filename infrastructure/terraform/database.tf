@@ -30,7 +30,7 @@ resource "aws_db_parameter_group" "mysql_params" {
 resource "aws_db_instance" "mysql" {
   identifier             = "${var.environment}-expense-tracker-mysql"
   engine                 = "mysql"
-  engine_version         = "8.0.35"
+  engine_version         = "8.0"
   instance_class         = var.db_instance_class
   allocated_storage      = var.db_allocated_storage
   max_allocated_storage  = 50

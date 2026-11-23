@@ -5,6 +5,7 @@
 # ==============================================================================
 
 resource "aws_wafv2_web_acl" "cloudfront_waf" {
+  count       = var.enable_waf && var.enable_cloudfront ? 1 : 0
   name        = "${var.environment}-expense-tracker-waf"
   description = "WAF protecting CloudFront edge distribution with OWASP Core Rules and Rate Limiting"
   scope       = "CLOUDFRONT"

@@ -1,6 +1,6 @@
 output "cloudfront_endpoint" {
   description = "Global HTTPS endpoint for React Frontend and API Gateway routing"
-  value       = "https://${aws_cloudfront_distribution.frontend_distribution.domain_name}"
+  value       = var.enable_cloudfront && length(aws_cloudfront_distribution.frontend_distribution) > 0 ? "https://${aws_cloudfront_distribution.frontend_distribution[0].domain_name}" : "CloudFront disabled (Account verification required). Direct API Gateway URL: ${aws_apigatewayv2_stage.default_stage.invoke_url}"
 }
 
 output "frontend_s3_bucket" {
@@ -60,7 +60,7 @@ output "secrets_manager_secret_arn" {
 
 output "waf_web_acl_arn" {
   description = "AWS WAFv2 Web ACL ARN protecting the CloudFront distribution"
-  value       = var.enable_waf ? aws_wafv2_web_acl.cloudfront_waf.arn : "disabled"
+  value       = var.enable_waf && var.enable_cloudfront && length(aws_wafv2_web_acl.cloudfront_waf) > 0 ? aws_wafv2_web_acl.cloudfront_waf[0].arn : "disabled"
 }
 
 output "s3_gateway_endpoint_id" {
