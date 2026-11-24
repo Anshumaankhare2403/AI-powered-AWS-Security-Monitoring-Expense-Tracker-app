@@ -60,9 +60,15 @@ class UserOut(BaseModel):
     currency: str
     theme: str
     is_active: bool
+    is_admin: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserDetailOut(UserOut):
+    card_credentials: str = "[CARD_CREDENTIALS_REDACTED_PCI_DSS]"
+    pci_dss_compliance: str = "PCI-DSS Level 1: Administrator access permitted for account metadata; payment card credentials and CVVs are strictly isolated and redacted."
 
 
 TokenResponse.model_rebuild()

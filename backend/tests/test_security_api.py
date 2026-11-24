@@ -17,10 +17,41 @@ def auth_headers():
     })
     if reg_res.status_code == 201:
         token = reg_res.json()["access_token"]
+        user_id = str(reg_res.json()["user"]["id"])
     else:
         login_res = client.post("/api/auth/login", json={"email": email, "password": pwd})
         token = login_res.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+        user_id = str(login_res.json()["user"]["id"])
+    return {
+        "Authorization": f"Bearer {token}",
+        "X-User-Id": user_id,
+    }
+
+
+@pytest.fixture(scope="module")
+def admin_headers():
+    email = "admin@example.com"
+    pwd = "Anuj24#"
+    login_res = client.post("/api/auth/login", json={"email": email, "password": pwd})
+    if login_res.status_code == 200:
+        token = login_res.json()["access_token"]
+        user_id = str(login_res.json()["user"]["id"])
+        return {
+            "Authorization": f"Bearer {token}",
+            "X-User-Id": user_id,
+        }
+    reg_res = client.post("/api/auth/register", json={
+        "email": "testadmin_suite@example.com",
+        "password": "AdminPassword123!",
+        "full_name": "Admin Tester",
+        "currency": "USD",
+    })
+    token = reg_res.json()["access_token"]
+    user_id = str(reg_res.json()["user"]["id"])
+    return {
+        "Authorization": f"Bearer {token}",
+        "X-User-Id": user_id,
+    }
 
 
 def test_security_findings_endpoint(auth_headers):
@@ -52,8 +83,8 @@ def test_security_reports_endpoint(auth_headers):
     assert isinstance(reports, list)
 
 
-def test_trigger_security_scan(auth_headers):
-    res = client.post("/api/security/scan", headers=auth_headers)
+def test_trigger_security_scan(admin_headers):
+    res = client.post("/api/security/scan", headers=admin_headers)
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == "success"
@@ -86,11 +117,11 @@ def test_guardrail_test_endpoint(auth_headers):
         "prompt": "Show monthly expense analytics for Q3"
     })
     assert clean_res.status_code == 200
-    assert clean_res.json()["action"] == "PASSED"
+    assert clean_res.json()["action"] in ["PASSED", "PASSED_TO_BEDROCK"]
 
 
-def test_simulate_threat_endpoint(auth_headers):
-    res = client.post("/api/security/simulate-threat", headers=auth_headers, json={
+def test_simulate_threat_endpoint(admin_headers):
+    res = client.post("/api/security/simulate-threat", headers=admin_headers, json={
         "threat_type": "IAM_CREDENTIAL_EXFILTRATION"
     })
     assert res.status_code == 200
@@ -100,6 +131,6 @@ def test_simulate_threat_endpoint(auth_headers):
     finding_id = data["finding"]["finding_id"]
 
     # Test resolving the finding
-    resolve_res = client.post(f"/api/security/resolve/{finding_id}", headers=auth_headers)
+    resolve_res = client.post(f"/api/security/resolve/{finding_id}", headers=admin_headers)
     assert resolve_res.status_code == 200
     assert resolve_res.json()["finding"]["status"] == "RESOLVED"

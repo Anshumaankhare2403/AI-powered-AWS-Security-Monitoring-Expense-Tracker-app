@@ -6,12 +6,18 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.middlewares import (
+    SecurityHeadersMiddleware,
+    RequestTracingAndTimingMiddleware,
+    UserIdentityAndPrivilegeMiddleware,
+)
 from app.database.session import engine, get_db
 from app.database.init_db import init_db
 
 # Import all API routers
 from app.api import (
     auth,
+    users,
     categories,
     transactions,
     budgets,
@@ -31,13 +37,12 @@ logger = logging.getLogger("expense_tracker")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: ensure database tables & default seeds exist
-    logger.info("Initializing database and verifying connection...")
+    # Startup: verify persistent database connection
+    logger.info("Verifying AWS RDS database connection...")
     try:
-        init_db()
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        logger.info("Database connection successfully established.")
+        logger.info("AWS RDS database connection successfully verified.")
     except Exception as e:
         logger.error(f"Failed to connect to database: {e}")
     yield
@@ -55,7 +60,8 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
 
-# CORS Middleware
+# Enterprise Middleware Pipeline
+# 1. CORS Middleware for cross-origin requests
 origins = settings.BACKEND_CORS_ORIGINS
 if isinstance(origins, list):
     allowed_origins = origins
@@ -70,8 +76,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 2. Security Headers (Clickjacking, MIME Sniffing, XSS protection)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 3. Request Observability, UUID tracing & Latency profiling
+app.add_middleware(RequestTracingAndTimingMiddleware)
+
+# 4. Strict User Identity & Privilege Enforcement Middleware
+app.add_middleware(UserIdentityAndPrivilegeMiddleware)
+
 # Register API Routers under /api
 app.include_router(auth.router, prefix=settings.API_V1_STR)
+app.include_router(users.router, prefix=settings.API_V1_STR)
 app.include_router(categories.router, prefix=settings.API_V1_STR)
 app.include_router(transactions.router, prefix=settings.API_V1_STR)
 app.include_router(budgets.router, prefix=settings.API_V1_STR)
@@ -92,6 +108,7 @@ def read_root():
         "docs": "/docs",
         "endpoints": {
             "auth": f"{settings.API_V1_STR}/auth",
+            "users": f"{settings.API_V1_STR}/users",
             "transactions": f"{settings.API_V1_STR}/transactions",
             "categories": f"{settings.API_V1_STR}/categories",
             "budgets": f"{settings.API_V1_STR}/budgets",

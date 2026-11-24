@@ -104,9 +104,12 @@ def get_monthly_trends(
     results = []
 
     for i in range(months - 1, -1, -1):
-        target_date = now - timedelta(days=i * 30)
-        m = target_date.month
-        y = target_date.year
+        # Precise calendar month step without fixed 30-day drift
+        m = now.month - i
+        y = now.year
+        while m <= 0:
+            m += 12
+            y -= 1
 
         inc = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
             Transaction.user_id == current_user.id,

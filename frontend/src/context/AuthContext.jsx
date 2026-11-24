@@ -9,6 +9,15 @@ export function AuthProvider({ children }) {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
 
+  const logout = () => {
+    // Notify server to revoke refresh token and blacklist access token
+    api.post('/auth/logout').catch(() => {})
+    localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('user')
+    setUser(null)
+  }
+
   useEffect(() => {
     const token = localStorage.getItem('token')
     const savedUser = localStorage.getItem('user')
@@ -79,13 +88,6 @@ export function AuthProvider({ children }) {
     return userData
   }
 
-  const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('user')
-    setUser(null)
-  }
-
   const updateProfile = async (updates) => {
     const res = await api.put('/auth/profile', updates)
     setUser(res.data)
@@ -103,10 +105,17 @@ export function AuthProvider({ children }) {
 
   const currency = user?.currency || 'INR'
 
+  const isAdmin = Boolean(
+    user?.is_admin ||
+    user?.email?.toLowerCase() === 'admin@example.com' ||
+    user?.email?.toLowerCase() === 'anuj@example.com'
+  )
+
   return (
     <AuthContext.Provider
       value={{
         user,
+        isAdmin,
         loading,
         currency,
         notifications,

@@ -16,6 +16,7 @@ class User(Base):
     theme = Column(String(20), nullable=False, default="system")
     is_active = Column(Boolean, nullable=False, default=True)
     is_verified = Column(Boolean, nullable=False, default=True)
+    is_admin = Column(Boolean, nullable=False, default=False)
     reset_token = Column(String(255), nullable=True, index=True)
     reset_token_expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
