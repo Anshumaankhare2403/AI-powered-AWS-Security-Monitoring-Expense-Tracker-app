@@ -411,6 +411,13 @@ export default function ApiConsole() {
       const token = localStorage.getItem('token')
       const headers = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
+      const savedUser = localStorage.getItem('user')
+      if (savedUser) {
+        try {
+          const u = JSON.parse(savedUser)
+          if (u?.id) headers['X-User-Id'] = String(u.id)
+        } catch (e) {}
+      }
 
       if (method === 'GET') {
         res = await axios.get(fullUrl, { headers })

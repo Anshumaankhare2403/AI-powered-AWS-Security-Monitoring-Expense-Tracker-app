@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ security = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
+    request: Request,
     auth: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
@@ -42,6 +43,14 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token subject missing.",
+        )
+    
+    # Validate attached X-User-Id header if provided
+    attached_user_id = request.headers.get("X-User-Id")
+    if attached_user_id and str(attached_user_id).strip() != str(user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Access blocked: Attached user ID '{attached_user_id}' does not match authenticated token credentials ({user_id}). Identity spoofing detected.",
         )
         
     user = db.query(User).filter(User.id == int(user_id)).first()

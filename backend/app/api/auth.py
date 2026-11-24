@@ -3,7 +3,7 @@ import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, is_user_admin
 from app.core.config import settings
 from app.core.security import (
     create_access_token,
@@ -52,7 +52,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    access_token = create_access_token(user.id)
+    access_token = create_access_token(user.id, is_admin=is_user_admin(user), email=user.email)
     refresh_token = create_refresh_token(user.id)
 
     db_refresh = RefreshToken(
@@ -87,7 +87,7 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
             detail="Account is disabled.",
         )
 
-    access_token = create_access_token(user.id)
+    access_token = create_access_token(user.id, is_admin=is_user_admin(user), email=user.email)
     refresh_token = create_refresh_token(user.id)
 
     db_refresh = RefreshToken(
@@ -137,7 +137,7 @@ def refresh_token(data: RefreshTokenRequest, db: Session = Depends(get_db)):
 
     # Token rotation: revoke old token and create new pair
     db_token.is_revoked = True
-    new_access_token = create_access_token(user.id)
+    new_access_token = create_access_token(user.id, is_admin=is_user_admin(user), email=user.email)
     new_refresh_token = create_refresh_token(user.id)
 
     new_db_token = RefreshToken(

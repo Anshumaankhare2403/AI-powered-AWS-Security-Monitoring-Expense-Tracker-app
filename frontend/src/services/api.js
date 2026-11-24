@@ -9,12 +9,21 @@ const api = axios.create({
   },
 })
 
-// Attach JWT access token to requests
+// Attach JWT access token and user identity to all server requests
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+    const savedUser = localStorage.getItem('user')
+    if (savedUser) {
+      try {
+        const u = JSON.parse(savedUser)
+        if (u?.id) {
+          config.headers['X-User-Id'] = String(u.id)
+        }
+      } catch (e) {}
     }
     return config
   },

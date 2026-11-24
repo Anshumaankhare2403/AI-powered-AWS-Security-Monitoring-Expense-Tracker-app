@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.middlewares import (
     SecurityHeadersMiddleware,
     RequestTracingAndTimingMiddleware,
-    AuthInspectionMiddleware,
+    UserIdentityAndPrivilegeMiddleware,
 )
 from app.database.session import engine, get_db
 from app.database.init_db import init_db
@@ -37,13 +37,12 @@ logger = logging.getLogger("expense_tracker")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: ensure database tables & default seeds exist
-    logger.info("Initializing database and verifying connection...")
+    # Startup: verify persistent database connection
+    logger.info("Verifying AWS RDS database connection...")
     try:
-        init_db()
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        logger.info("Database connection successfully established.")
+        logger.info("AWS RDS database connection successfully verified.")
     except Exception as e:
         logger.error(f"Failed to connect to database: {e}")
     yield
@@ -83,8 +82,8 @@ app.add_middleware(SecurityHeadersMiddleware)
 # 3. Request Observability, UUID tracing & Latency profiling
 app.add_middleware(RequestTracingAndTimingMiddleware)
 
-# 4. Authentication Inspection & Header sanity checks
-app.add_middleware(AuthInspectionMiddleware)
+# 4. Strict User Identity & Privilege Enforcement Middleware
+app.add_middleware(UserIdentityAndPrivilegeMiddleware)
 
 # Register API Routers under /api
 app.include_router(auth.router, prefix=settings.API_V1_STR)
