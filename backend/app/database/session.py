@@ -9,7 +9,7 @@ Base = declarative_base()
 
 
 def get_working_engine():
-    # Attempt connecting to primary configured DATABASE_URL (MySQL)
+    # Strict connection to configured DATABASE_URL (AWS RDS MySQL)
     try:
         connect_args = {}
         if settings.DATABASE_URL.startswith("sqlite"):
@@ -23,16 +23,12 @@ def get_working_engine():
         )
         with eng.connect() as conn:
             conn.execute(text("SELECT 1"))
-        logger.info(f"Connected to primary database: {settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else settings.DATABASE_URL}")
+        db_target = settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else settings.DATABASE_URL
+        logger.info(f"Connected to AWS RDS database: {db_target}")
         return eng
     except Exception as e:
-        logger.warning(f"Could not connect to primary database ({e}). Falling back to local SQLite database.")
-        sqlite_url = "sqlite:///./expense_tracker.db"
-        sqlite_engine = create_engine(
-            sqlite_url,
-            connect_args={"check_same_thread": False},
-        )
-        return sqlite_engine
+        logger.error(f"FATAL: Could not connect to primary AWS RDS database ({e}). Local fallback is strictly disabled.")
+        raise RuntimeError(f"Database connection error: Could not reach AWS RDS at {settings.DATABASE_URL}: {e}")
 
 
 engine = get_working_engine()

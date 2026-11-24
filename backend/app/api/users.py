@@ -72,7 +72,7 @@ def update_current_user_password(
     return {"message": "Password changed successfully."}
 
 
-@router.get("", response_model=List[UserOut], summary="List all users in database (Admin Only)")
+@router.get("", response_model=List[UserDetailOut], summary="List all users in database (Admin Only)")
 def list_users(
     skip: int = Query(0, ge=0, description="Records to skip"),
     limit: int = Query(50, ge=1, le=100, description="Max records to return"),

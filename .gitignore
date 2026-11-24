@@ -44,6 +44,8 @@ mysqldata/
 *.db
 *.sqlite
 *.sqlite3
+*.retired_local
+bin/
 
 # Environment variables
 .env
