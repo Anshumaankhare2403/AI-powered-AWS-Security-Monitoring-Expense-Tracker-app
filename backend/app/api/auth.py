@@ -16,7 +16,7 @@ from app.database.session import get_db
 from app.models.token import RefreshToken
 from app.models.user import User
 from app.schemas.user import (
-    ForgotPasswordRequest,
+    ForgotPasswordRequest,  
     PasswordChange,
     RefreshTokenRequest,
     ResetPasswordRequest,

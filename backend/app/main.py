@@ -6,6 +6,11 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.middlewares import (
+    SecurityHeadersMiddleware,
+    RequestTracingAndTimingMiddleware,
+    AuthInspectionMiddleware,
+)
 from app.database.session import engine, get_db
 from app.database.init_db import init_db
 
@@ -56,7 +61,8 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
 
-# CORS Middleware
+# Enterprise Middleware Pipeline
+# 1. CORS Middleware for cross-origin requests
 origins = settings.BACKEND_CORS_ORIGINS
 if isinstance(origins, list):
     allowed_origins = origins
@@ -70,6 +76,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 2. Security Headers (Clickjacking, MIME Sniffing, XSS protection)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 3. Request Observability, UUID tracing & Latency profiling
+app.add_middleware(RequestTracingAndTimingMiddleware)
+
+# 4. Authentication Inspection & Header sanity checks
+app.add_middleware(AuthInspectionMiddleware)
 
 # Register API Routers under /api
 app.include_router(auth.router, prefix=settings.API_V1_STR)

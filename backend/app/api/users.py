@@ -11,6 +11,7 @@ from app.schemas.user import (
     PasswordChange,
     UserCreate,
     UserOut,
+    UserDetailOut,
     UserUpdate,
 )
 
@@ -95,7 +96,7 @@ def list_users(
     return query.order_by(User.id.asc()).offset(skip).limit(limit).all()
 
 
-@router.get("/{user_id}", response_model=UserOut, summary="Get user by ID (Owner or Admin Only)")
+@router.get("/{user_id}", response_model=UserDetailOut, summary="Get user details by ID (Owner or Admin Only, Card Credentials Redacted)")
 def get_user_by_id(
     user_id: int,
     current_user: User = Depends(get_current_user),
@@ -103,8 +104,10 @@ def get_user_by_id(
 ):
     """
     Fetch a single user by their primary key ID.
-    [RESTRICTED] Regular users can only access their own user profile (user_id == current_user.id).
-    Accessing other users' profiles requires administrator privileges (HTTP 403 if unauthorized).
+    [SECURITY POLICY]:
+    - Regular users can only access their own user profile (user_id == current_user.id).
+    - Administrators can inspect all user details (name, email, role, status, currency).
+    - Under PCI-DSS Level 1 compliance, card credentials and CVVs are strictly isolated and redacted for all parties.
     """
     if current_user.id != user_id and not is_user_admin(current_user):
         raise HTTPException(
@@ -118,6 +121,7 @@ def get_user_by_id(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User with ID {user_id} not found.",
         )
+    return user
     return user
 
 

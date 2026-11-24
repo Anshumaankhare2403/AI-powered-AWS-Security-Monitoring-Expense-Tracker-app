@@ -329,6 +329,15 @@ def evaluate_security_guardrails(raw_text: str):
             "detail": "PCI-DSS / ISO 27001 Protection: Payment and banking records cannot be accessed across account boundaries."
         })
 
+    # Trigger: Card credentials isolation policy (Admins can view user details, but card credentials are never exposed)
+    card_target_pattern = r"\b(card\s*(?:credentials?|details?|numbers?)|credit\s*cards?|debit\s*cards?|cvv|cvc|pan|pin)\b"
+    if re.search(card_target_pattern, norm):
+        interventions.append({
+            "type": "PCI_DSS_CARD_CREDENTIAL_ISOLATION",
+            "detail": "PCI-DSS Policy Enforced: Administrator user detail access is permitted, but card credentials and CVVs are strictly isolated and redacted."
+        })
+        text = re.sub(r"(?i)\b(card\s*(?:credentials?|details?|numbers?)|credit\s*card\s*(?:details?|numbers?)|cvv|pan)\b", "[CARD_CREDENTIALS_REDACTED_PCI_DSS]", text)
+
     # Trigger 3: Bulk database dump or mass credentials export
     if re.search(r"\b(dump\s+database|all\s+passwords|dump\s+users|all\s+secrets|export\s+all\s+data|dump\s+tables?)\b", norm):
         interventions.append({
