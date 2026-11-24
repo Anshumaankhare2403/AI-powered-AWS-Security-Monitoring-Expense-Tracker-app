@@ -156,6 +156,35 @@ def get_dynamo_findings() -> List[Dict[str, Any]]:
     return RUNTIME_FINDINGS
 
 
+def persist_dynamo_finding(finding_item: Dict[str, Any]) -> None:
+    """Persist finding item to DynamoDB table with fallback to in-memory cache."""
+    try:
+        import boto3
+        dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
+        table = dynamodb.Table(DYNAMODB_TABLE)
+        table.put_item(Item=finding_item)
+        logger.info(f"Persisted finding {finding_item.get('finding_id')} to DynamoDB {DYNAMODB_TABLE}")
+    except Exception as exc:
+        logger.warning(f"DynamoDB put_item failed ({exc}). Retained in runtime cache.")
+
+
+def update_dynamo_finding_status(finding_id: str, new_status: str) -> None:
+    """Update finding resolution status in DynamoDB."""
+    try:
+        import boto3
+        dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
+        table = dynamodb.Table(DYNAMODB_TABLE)
+        table.update_item(
+            Key={"finding_id": finding_id},
+            UpdateExpression="SET #s = :status",
+            ExpressionAttributeNames={"#s": "status"},
+            ExpressionAttributeValues={":status": new_status},
+        )
+        logger.info(f"Updated finding {finding_id} status to {new_status} in DynamoDB")
+    except Exception as exc:
+        logger.warning(f"DynamoDB update_item failed ({exc}).")
+
+
 @router.get("/findings", response_model=List[FindingItem])
 def list_findings(current_user: User = Depends(get_current_user)):
     """Fetch security threats and AI remediation recommendations from DynamoDB."""
@@ -421,9 +450,18 @@ def evaluate_security_guardrails(raw_text: str):
         if kw in norm:
             interventions.append({"type": "PROMPT_ATTACK", "detail": f"Prompt injection detected on keyword: '{kw}'"})
 
+    blocking_types = {
+        "MALICIOUS_INTENT_BLOCKED",
+        "PROMPT_ATTACK",
+        "SQL_INJECTION_BLOCK",
+        "COMMAND_INJECTION_BLOCKED",
+        "PATH_TRAVERSAL_BLOCKED",
+        "BULK_DATA_EXFILTRATION_BLOCKED",
+    }
+    has_blocking = any(i["type"] in blocking_types for i in interventions)
     action = "GUARDRAIL_INTERVENED" if len(interventions) > 0 else "PASSED"
 
-    if action == "GUARDRAIL_INTERVENED":
+    if has_blocking:
         unique_types = sorted(list(set(i['type'] for i in interventions)))
         sanitized_output = f"[BLOCKED BY BEDROCK GUARDRAIL: Detected {', '.join(unique_types)}. Request violates cloud security, data privacy, and multi-tenant policies.]"
     else:
@@ -495,7 +533,7 @@ def test_bedrock_guardrail(payload: GuardrailTestRequest, current_user: User = D
         if "outputs" in bedrock_resp and len(bedrock_resp["outputs"]) > 0:
             output_text = bedrock_resp["outputs"][0].get("text", payload.prompt)
 
-        final_action = "GUARDRAIL_INTERVENED" if (action != "NONE" or domain_action == "GUARDRAIL_INTERVENED") else "PASSED_TO_BEDROCK"
+        final_action = "GUARDRAIL_INTERVENED" if (action != "NONE" or domain_action == "GUARDRAIL_INTERVENED") else "PASSED"
         final_output = domain_sanitized if domain_action == "GUARDRAIL_INTERVENED" else output_text
 
         return {
@@ -640,6 +678,7 @@ def simulate_threat(payload: ThreatSimulationRequest, admin_user: User = Depends
     }
 
     RUNTIME_FINDINGS.insert(0, new_finding)
+    persist_dynamo_finding(new_finding)
 
     return {
         "status": "success",
@@ -654,6 +693,7 @@ def resolve_finding(finding_id: str, admin_user: User = Depends(get_current_admi
     for item in RUNTIME_FINDINGS:
         if item.get("finding_id") == finding_id:
             item["status"] = "RESOLVED"
+            update_dynamo_finding_status(finding_id, "RESOLVED")
             return {"status": "success", "message": f"Finding '{finding_id}' marked as RESOLVED.", "finding": item}
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Finding '{finding_id}' not found.")
 
@@ -679,6 +719,7 @@ def trigger_security_scan(admin_user: User = Depends(get_current_admin_user)):
         "status": "RESOLVED",
     }
     RUNTIME_FINDINGS.insert(0, new_finding)
+    persist_dynamo_finding(new_finding)
     return {
         "status": "success",
         "message": "AI Security and FinOps scan completed successfully.",

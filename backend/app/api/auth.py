@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, is_user_admin
 from app.core.config import settings
+from app.core.middlewares import revoke_access_token
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -158,18 +159,43 @@ def refresh_token(data: RefreshTokenRequest, db: Session = Depends(get_db)):
 
 @router.post("/forgot-password")
 def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Initiate secure password reset.
+    Does not expose reset tokens in the response or leak whether the account exists.
+    """
     user = db.query(User).filter(User.email == req.email.lower()).first()
     if user:
         reset_token = secrets.token_urlsafe(32)
         user.reset_token = reset_token
-        user.reset_token_expires_at = datetime.utcnow() + timedelta(hours=1)
+        user.reset_token_expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=1)
         db.commit()
-        # In production, send email. For development, we return token for easy verification.
-        return {
-            "message": "Password reset token generated.",
-            "reset_token": reset_token,
-        }
-    return {"message": "If this email exists, a password reset token has been issued."}
+    # Consistent response for existing and non-existing accounts prevents user enumeration
+    return {"message": "If this email exists in our system, a password recovery instruction has been dispatched."}
+
+
+@router.post("/logout")
+def logout(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Logout user: revokes active refresh tokens and blacklists the current JWT access token.
+    """
+    # 1. Revoke all active refresh tokens in database
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == current_user.id,
+        RefreshToken.is_revoked == False,
+    ).update({"is_revoked": True})
+    db.commit()
+
+    # 2. Blacklist current access token in middleware
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+        revoke_access_token(token)
+
+    return {"message": "Successfully logged out. Session and tokens revoked."}
 
 
 @router.post("/reset-password")
@@ -185,7 +211,8 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
             detail="Invalid or expired reset token.",
         )
     
-    if user.reset_token_expires_at and user.reset_token_expires_at < datetime.utcnow():
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    if user.reset_token_expires_at and user.reset_token_expires_at < now_utc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reset token has expired.",

@@ -10,6 +10,19 @@ from app.core.security import decode_token
 
 logger = logging.getLogger("expense_tracker.middleware")
 
+# Thread-safe in-memory blacklist of revoked access tokens
+REVOKED_ACCESS_TOKENS: Set[str] = set()
+
+
+def revoke_access_token(token: str) -> None:
+    """Add an access token to the revoked tokens blacklist."""
+    REVOKED_ACCESS_TOKENS.add(token.strip())
+
+
+def is_token_revoked(token: str) -> bool:
+    """Check if an access token has been revoked / logged out."""
+    return token.strip() in REVOKED_ACCESS_TOKENS
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
@@ -113,6 +126,17 @@ class UserIdentityAndPrivilegeMiddleware(BaseHTTPMiddleware):
 
         # 2. Decode and validate token integrity
         token = auth_header[7:].strip()
+        if is_token_revoked(token):
+            logger.warning(f"[SECURITY BLOCK] Revoked token attempted access on {request.method} {path}")
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={
+                    "detail": "Token has been revoked or logged out. Please log in again.",
+                    "error_code": "TOKEN_REVOKED",
+                },
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
         payload = decode_token(token)
         if not payload or payload.get("type") != "access":
             logger.warning(f"[SECURITY BLOCK] Invalid or expired token on {request.method} {path}")

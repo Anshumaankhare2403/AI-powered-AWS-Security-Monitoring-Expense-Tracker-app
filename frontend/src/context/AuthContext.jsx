@@ -9,6 +9,15 @@ export function AuthProvider({ children }) {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
 
+  const logout = () => {
+    // Notify server to revoke refresh token and blacklist access token
+    api.post('/auth/logout').catch(() => {})
+    localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('user')
+    setUser(null)
+  }
+
   useEffect(() => {
     const token = localStorage.getItem('token')
     const savedUser = localStorage.getItem('user')
@@ -77,13 +86,6 @@ export function AuthProvider({ children }) {
     localStorage.setItem('user', JSON.stringify(userData))
     setUser(userData)
     return userData
-  }
-
-  const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('user')
-    setUser(null)
   }
 
   const updateProfile = async (updates) => {

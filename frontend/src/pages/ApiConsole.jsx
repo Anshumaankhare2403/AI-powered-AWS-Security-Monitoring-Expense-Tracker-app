@@ -57,6 +57,10 @@ export default function ApiConsole() {
   const [loadingData, setLoadingData] = useState(false)
   const [filterPriority, setFilterPriority] = useState('ALL')
   const [endpointMethodFilter, setEndpointMethodFilter] = useState('ALL') // 'ALL' | 'AUTH' | 'SECURITY' | 'GET' | 'POST'
+  const [customHeaders, setCustomHeaders] = useState([
+    { key: '', value: '' },
+  ])
+  const [showHeadersEditor, setShowHeadersEditor] = useState(false)
 
   // Pre-configured Quick Endpoint Recipes (GET & POST) with Module Classification
   const quickEndpoints = [
@@ -271,7 +275,7 @@ export default function ApiConsole() {
           amount: 145.5,
           type: 'expense',
           category_id: 1,
-          transaction_date: new Date().toISOString().split('T')[0],
+          transaction_date: '2026-11-24',
           payment_method: 'credit_card',
           description: 'Production cluster auto-scaling compute cost',
         },
@@ -288,8 +292,8 @@ export default function ApiConsole() {
         {
           category_id: 1,
           amount: 750.0,
-          month: new Date().getMonth() + 1,
-          year: new Date().getFullYear(),
+          month: 11,
+          year: 2026,
           alert_threshold: 80.0,
         },
         null,
@@ -372,30 +376,55 @@ export default function ApiConsole() {
       ),
       description: 'Test AWS WAF & Bedrock SQLi payload interception',
     },
+    {
+      label: 'Update Profile (PUT)',
+      method: 'PUT',
+      url: '/api/auth/profile',
+      module: 'AUTH',
+      body: JSON.stringify(
+        {
+          full_name: 'Lead Cloud Architect',
+          currency: 'USD',
+          theme: 'dark',
+        },
+        null,
+        2
+      ),
+      description: 'Update user full name, currency preference, and theme settings',
+    },
+    {
+      label: 'Update Transaction (PUT)',
+      method: 'PUT',
+      url: '/api/transactions/1',
+      module: 'FINANCE',
+      body: JSON.stringify(
+        {
+          title: 'AWS CloudWatch Log Retention',
+          amount: 68.5,
+          description: 'Updated log retention optimization',
+        },
+        null,
+        2
+      ),
+      description: 'Update existing transaction details and amount',
+    },
+    {
+      label: 'Delete Transaction (DELETE)',
+      method: 'DELETE',
+      url: '/api/transactions/1',
+      module: 'FINANCE',
+      body: '',
+      description: 'Remove transaction from ledger and recalculate budget',
+    },
+    {
+      label: 'Revoke Session (Logout)',
+      method: 'POST',
+      url: '/api/auth/logout',
+      module: 'AUTH',
+      body: '',
+      description: 'Revoke active refresh tokens and blacklist current JWT',
+    },
   ]
-
-  // Load initial Alerts & Suggestions
-  const loadAlertsAndSuggestions = async () => {
-    try {
-      setLoadingData(true)
-      const [findRes, sugRes] = await Promise.all([
-        api.get('/security/findings'),
-        api.get('/security/suggestions'),
-      ])
-      setAlerts(findRes.data)
-      setSuggestions(sugRes.data)
-    } catch (err) {
-      console.error('Failed to load alerts/suggestions:', err)
-    } finally {
-      setLoadingData(false)
-    }
-  }
-
-  useEffect(() => {
-    loadAlertsAndSuggestions()
-    // Auto-run first endpoint for immediate live output
-    handleExecuteApi('GET', '/api/security/summary', '')
-  }, [])
 
   // Execute API Call
   const handleExecuteApi = async (method = selectedMethod, url = selectedEndpoint, body = requestBody) => {
@@ -419,11 +448,23 @@ export default function ApiConsole() {
         } catch (e) {}
       }
 
+      // Merge user-defined custom headers
+      if (customHeaders && Array.isArray(customHeaders)) {
+        for (const h of customHeaders) {
+          if (h.key && h.key.trim()) {
+            headers[h.key.trim()] = h.value
+          }
+        }
+      }
+
       if (method === 'GET') {
         res = await axios.get(fullUrl, { headers })
       } else if (method === 'PUT') {
         const parsedBody = body.trim() ? JSON.parse(body) : {}
         res = await axios.put(fullUrl, parsedBody, { headers })
+      } else if (method === 'PATCH') {
+        const parsedBody = body.trim() ? JSON.parse(body) : {}
+        res = await axios.patch(fullUrl, parsedBody, { headers })
       } else if (method === 'DELETE') {
         res = await axios.delete(fullUrl, { headers })
       } else {
@@ -468,6 +509,29 @@ export default function ApiConsole() {
       setIsCalling(false)
     }
   }
+
+  // Load initial Alerts & Suggestions
+  const loadAlertsAndSuggestions = async () => {
+    try {
+      setLoadingData(true)
+      const [findRes, sugRes] = await Promise.all([
+        api.get('/security/findings'),
+        api.get('/security/suggestions'),
+      ])
+      setAlerts(findRes.data)
+      setSuggestions(sugRes.data)
+    } catch (err) {
+      console.error('Failed to load alerts/suggestions:', err)
+    } finally {
+      setLoadingData(false)
+    }
+  }
+
+  useEffect(() => {
+    loadAlertsAndSuggestions()
+    // Auto-run first endpoint for immediate live output
+    handleExecuteApi('GET', '/api/security/summary', '')
+  }, [])
 
   const handleCopyJson = () => {
     if (!apiResponse) return
@@ -668,6 +732,30 @@ export default function ApiConsole() {
                   <span className={`w-1.5 h-1.5 rounded-full ${endpointMethodFilter === 'POST' ? 'bg-white' : 'bg-emerald-500'}`} />
                   POST ({quickEndpoints.filter((e) => e.method === 'POST').length})
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setEndpointMethodFilter('PUT')}
+                  className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition ${
+                    endpointMethodFilter === 'PUT'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'text-amber-700 hover:bg-amber-50'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${endpointMethodFilter === 'PUT' ? 'bg-white' : 'bg-amber-500'}`} />
+                  PUT ({quickEndpoints.filter((e) => e.method === 'PUT').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEndpointMethodFilter('DELETE')}
+                  className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition ${
+                    endpointMethodFilter === 'DELETE'
+                      ? 'bg-rose-600 text-white shadow-sm'
+                      : 'text-rose-700 hover:bg-rose-50'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${endpointMethodFilter === 'DELETE' ? 'bg-white' : 'bg-rose-500'}`} />
+                  DELETE ({quickEndpoints.filter((e) => e.method === 'DELETE').length})
+                </button>
               </div>
             </div>
 
@@ -682,6 +770,8 @@ export default function ApiConsole() {
                 })
                 .map((ep, idx) => {
                   const isPost = ep.method === 'POST'
+                  const isPut = ep.method === 'PUT'
+                  const isDelete = ep.method === 'DELETE'
                   const isAuth = ep.module === 'AUTH'
                   return (
                     <button
@@ -697,6 +787,10 @@ export default function ApiConsole() {
                           ? 'border-purple-200/80 hover:border-purple-500 hover:bg-purple-50/40 bg-purple-50/15'
                           : isPost
                           ? 'border-emerald-200/80 hover:border-emerald-500 hover:bg-emerald-50/40 bg-emerald-50/15'
+                          : isPut
+                          ? 'border-amber-200/80 hover:border-amber-500 hover:bg-amber-50/40 bg-amber-50/15'
+                          : isDelete
+                          ? 'border-rose-200/80 hover:border-rose-500 hover:bg-rose-50/40 bg-rose-50/15'
                           : 'border-slate-200 hover:border-blue-400 hover:bg-blue-50/30'
                       }`}
                     >
@@ -707,6 +801,10 @@ export default function ApiConsole() {
                               className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
                                 isPost
                                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                  : isPut
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                  : isDelete
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-300'
                                   : 'bg-blue-100 text-blue-800 border border-blue-300'
                               }`}
                             >
@@ -775,6 +873,9 @@ export default function ApiConsole() {
                     >
                       <option value="GET">GET</option>
                       <option value="POST">POST</option>
+                      <option value="PUT">PUT</option>
+                      <option value="PATCH">PATCH</option>
+                      <option value="DELETE">DELETE</option>
                     </select>
                     <input
                       type="text"
@@ -786,11 +887,79 @@ export default function ApiConsole() {
                   </div>
                 </div>
 
-                {/* Request Body (for POST) */}
-                {selectedMethod === 'POST' && (
+                {/* Custom Request Headers Accordion */}
+                <div className="space-y-2 border-t border-slate-100 pt-2">
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setShowHeadersEditor(!showHeadersEditor)}
+                      className="text-xs font-semibold text-slate-600 hover:text-indigo-600 flex items-center gap-1.5"
+                    >
+                      <span>Custom Headers</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                        {customHeaders.filter(h => h.key && h.key.trim()).length}
+                      </span>
+                      <span className="text-[10px] text-slate-400">{showHeadersEditor ? '▲' : '▼'}</span>
+                    </button>
+                    {showHeadersEditor && (
+                      <button
+                        type="button"
+                        onClick={() => setCustomHeaders([...customHeaders, { key: '', value: '' }])}
+                        className="text-[11px] text-indigo-600 hover:underline font-semibold"
+                      >
+                        + Add Header
+                      </button>
+                    )}
+                  </div>
+
+                  {showHeadersEditor && (
+                    <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                      {customHeaders.map((hdr, hIdx) => (
+                        <div key={hIdx} className="flex gap-1.5 items-center">
+                          <input
+                            type="text"
+                            placeholder="Header-Name"
+                            value={hdr.key}
+                            onChange={(e) => {
+                              const updated = [...customHeaders]
+                              updated[hIdx].key = e.target.value
+                              setCustomHeaders(updated)
+                            }}
+                            className="w-1/2 px-2 py-1 text-xs font-mono bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Value"
+                            value={hdr.value}
+                            onChange={(e) => {
+                              const updated = [...customHeaders]
+                              updated[hIdx].value = e.target.value
+                              setCustomHeaders(updated)
+                            }}
+                            className="flex-1 px-2 py-1 text-xs font-mono bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = customHeaders.filter((_, i) => i !== hIdx)
+                              setCustomHeaders(updated.length > 0 ? updated : [{ key: '', value: '' }])
+                            }}
+                            className="p-1 text-slate-400 hover:text-rose-500 rounded"
+                            title="Remove header"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Request Body (for POST, PUT, PATCH) */}
+                {['POST', 'PUT', 'PATCH'].includes(selectedMethod) && (
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-slate-600">JSON Request Body</label>
+                      <label className="text-xs font-semibold text-slate-600">JSON Request Body ({selectedMethod})</label>
                       <button
                         onClick={() => setRequestBody('{\n  "prompt": "Test prompt"\n}')}
                         className="text-[11px] text-indigo-600 hover:underline"

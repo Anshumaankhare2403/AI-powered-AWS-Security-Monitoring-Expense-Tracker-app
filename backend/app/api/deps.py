@@ -4,6 +4,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.core.security import decode_token
+from app.core.middlewares import is_token_revoked
 from app.database.session import get_db
 from app.models.user import User
 
@@ -23,6 +24,13 @@ def get_current_user(
         )
     
     token = auth.credentials
+    if is_token_revoked(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked or logged out. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     payload = decode_token(token)
     if not payload:
         raise HTTPException(

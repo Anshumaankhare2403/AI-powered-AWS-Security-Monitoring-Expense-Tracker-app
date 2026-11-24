@@ -18,13 +18,20 @@ def auth_headers():
         "currency": "USD",
     })
     if reg_res.status_code == 201:
-        token = reg_res.json()["access_token"]
+        data = reg_res.json()
+        token = data["access_token"]
+        user_id = str(data["user"]["id"])
     else:
         # User might already exist in persistent DB, login
         login_res = client.post("/api/auth/login", json={"email": email, "password": pwd})
-        token = login_res.json()["access_token"]
+        data = login_res.json()
+        token = data["access_token"]
+        user_id = str(data["user"]["id"])
         
-    return {"Authorization": f"Bearer {token}"}
+    return {
+        "Authorization": f"Bearer {token}",
+        "X-User-Id": user_id,
+    }
 
 
 @pytest.fixture(scope="module")
@@ -38,11 +45,18 @@ def user_b_headers():
         "currency": "EUR",
     })
     if reg_res.status_code == 201:
-        token = reg_res.json()["access_token"]
+        data = reg_res.json()
+        token = data["access_token"]
+        user_id = str(data["user"]["id"])
     else:
         login_res = client.post("/api/auth/login", json={"email": email, "password": pwd})
-        token = login_res.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+        data = login_res.json()
+        token = data["access_token"]
+        user_id = str(data["user"]["id"])
+    return {
+        "Authorization": f"Bearer {token}",
+        "X-User-Id": user_id,
+    }
 
 
 def test_auth_me(auth_headers):
